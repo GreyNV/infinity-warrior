@@ -99,3 +99,11 @@
 - Updated `src/config.js` with cultivation tuning constants and a minimum attack interval clamp for speed scaling.
 - Simplified `src/render.js` to focus on battlefield rendering + combat bars while side-panel progression/info is now handled in DOM UI.
 - Ran lightweight validation checks (`node --check`, simulation smoke test) and captured an updated screenshot of the tabbed side-panel/cultivation layout.
+2026-02-17 (biome-color spawn + rarity + exploration encounter chains)
+- Checked `progress.txt` before starting this implementation and followed AGENTS character-sheet constraints.
+- Updated `src/simulation.js` to shift progression from per-kill floor stepping into direction-based world exploration: player reveals new hexes while moving, each reveal rolls enemy spawn chance, and deeper travel increases chained encounter count.
+- Added biome-linked enemy generation in `src/simulation.js` so spawned enemies inherit area color/theme and apply biome-specific HP/attack modifiers.
+- Added rarity tiers (common, uncommon, rare, epic, legendary) with weighted roll + stat multipliers and spawn event metadata.
+- Updated `src/config.js` with configurable biome combat modifiers, rarity tiers, reveal-spawn probabilities, and depth-based consecutive encounter scaling constants.
+- Updated `src/render.js` and `src/main.js` panel copy/stats to reflect exploration depth, chain count, biome/rarity labeling, and no-target exploration state.
+- Ran lightweight validation checks (`node --check`, simulation smoke run). Attempted browser screenshot capture, but browser-container navigation to local server returned `ERR_EMPTY_RESPONSE` in this environment.

@@ -79,9 +79,12 @@ function renderPanel() {
   const agilityMultiplier = getAgilityAttackSpeedMultiplier({ agilityLevel: state.persistent.agilityLevel, config: GAME_CONFIG });
   const speedRatio = Math.min(1, (agilityMultiplier - 1) / (GAME_CONFIG.cultivation.maxAttackSpeedMultiplier - 1 || 1));
 
+  const chainCount = state.enemy ? state.world.pendingEncounters + 1 : 0;
+
   coreStatsEl.innerHTML = `
     <div class="stat-line">Floor ${state.floor} · Best ${state.bestFloor}</div>
-    <div class="stat-line">Essence ${state.resources.essence}</div>
+    <div class="stat-line">Depth ${state.world.travelDepth} · Chain ${chainCount}</div>
+    <div class="stat-line">Essence ${Math.floor(state.resources.essence)}</div>
     <div class="stat-line">STR ${state.run.strengthLevel} (${state.persistent.strengthPrestigeLevel})</div>
     <div class="stat-line">END ${state.run.enduranceLevel} (${state.persistent.endurancePrestigeLevel})</div>
     <div class="stat-line">AGI ${state.persistent.agilityLevel} · Speed x${agilityMultiplier.toFixed(2)}</div>
@@ -92,8 +95,8 @@ function renderPanel() {
   if (selectedTab === 'battle') {
     tabContentEl.innerHTML = `
       <h3>⚔️ Battle</h3>
-      <p>Auto-fight advances floors and earns Essence after each victory.</p>
-      <p>Cultivation unlocks after your first defeat, then Essence can be channeled into Agility.</p>
+      <p>You travel through hex biomes; revealed hexes can spawn enemy chains with rarity tiers.</p>
+      <p>Enemy color matches biome, while rarity (common → legendary) boosts stats.</p>
     `;
     return;
   }
