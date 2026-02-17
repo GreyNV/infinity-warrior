@@ -117,7 +117,10 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   state.floor += 1;
   state.bestFloor = Math.max(state.bestFloor, state.floor);
   state.enemy = createEnemyForFloor(state.floor, config);
-  state.battlePositions = createInitialBattlePositions(config);
+  state.battlePositions = createVictoryBattlePositions({
+    previousBattlePositions: state.battlePositions,
+    config
+  });
   state.combatTimers.playerMs = 0;
   state.combatTimers.enemyMs = 0;
 
@@ -170,8 +173,8 @@ export function getEnemyMaxHp(floor, config = GAME_CONFIG) {
   return Math.floor(config.combat.enemyHpBase * Math.pow(floor, config.combat.enemyHpExp));
 }
 
-export function getEnemyAttack(floor, config = GAME_CONFIG) {
-  return Math.floor(config.combat.enemyAttackBase * Math.pow(floor, config.combat.enemyAttackExp));
+export function getEnemyAttack(_floor, config = GAME_CONFIG) {
+  return Math.floor(config.combat.enemyAttackBase);
 }
 
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
@@ -314,6 +317,35 @@ function stepHexTowards({ from, to }) {
   }
 
   return best;
+}
+
+function createVictoryBattlePositions({ previousBattlePositions, config }) {
+  const playerHex = structuredClone(previousBattlePositions.playerHex);
+  const enemyHex = spawnEnemyHexFromPlayer({ playerHex, config });
+
+  return {
+    playerHex,
+    enemyHex,
+    movementMs: 0
+  };
+}
+
+function spawnEnemyHexFromPlayer({ playerHex, config }) {
+  const directions = [
+    { q: 1, r: 0 },
+    { q: -1, r: 0 },
+    { q: 0, r: 1 },
+    { q: 0, r: -1 },
+    { q: 1, r: -1 },
+    { q: -1, r: 1 }
+  ];
+
+  const randomDirection = directions[Math.floor(Math.random() * directions.length)];
+
+  return {
+    q: playerHex.q + randomDirection.q * config.combat.startingHexGap,
+    r: playerHex.r + randomDirection.r * config.combat.startingHexGap
+  };
 }
 
 function isWithinEffectiveRange(state, config) {
