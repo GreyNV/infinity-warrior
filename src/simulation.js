@@ -16,6 +16,10 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
     },
     run,
     persistent,
+    combatTimers: {
+      playerMs: 0,
+      enemyMs: 0
+    },
     enemy: createEnemyForFloor(1, config),
     combatLog: []
   };
@@ -31,11 +35,7 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
 
   const playerStats = buildPlayerStats(next.run, next.persistent);
 
-  applyPlayerAttack({ state: next, playerStats, config, events });
-
-  if (next.enemy.hp > 0) {
-    applyEnemyAttack({ state: next, playerStats, config, events });
-  }
+  tickCombatIntervals({ state: next, dtMs, playerStats, config, events });
 
   resolveLevelUps({ run: next.run, persistent: next.persistent, config, events });
   resolveEncounterOutcome({ state: next, config, events });
@@ -121,6 +121,8 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = getMaxHp(playerStats, config);
   state.enemy = createEnemyForFloor(1, config);
+  state.combatTimers.playerMs = 0;
+  state.combatTimers.enemyMs = 0;
 
   events.push({ type: 'defeat', resetFloor: state.floor });
 }
@@ -221,6 +223,29 @@ function applyEnemyAttack({ state, playerStats, config, events }) {
   state.run.hp = Math.max(0, state.run.hp - enemyDamage);
 
   events.push({ type: 'enemyHit', amount: enemyDamage, enduranceXpGain, endurancePrestigeXpGain });
+}
+
+function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
+  state.combatTimers.playerMs += dtMs;
+  state.combatTimers.enemyMs += dtMs;
+
+  if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: config.combat.playerAttackIntervalMs })) {
+    state.combatTimers.playerMs -= config.combat.playerAttackIntervalMs;
+    applyPlayerAttack({ state, playerStats, config, events });
+  }
+
+  if (state.enemy.hp <= 0) {
+    return;
+  }
+
+  if (consumeInterval({ timerMs: state.combatTimers.enemyMs, intervalMs: config.combat.enemyAttackIntervalMs })) {
+    state.combatTimers.enemyMs -= config.combat.enemyAttackIntervalMs;
+    applyEnemyAttack({ state, playerStats, config, events });
+  }
+}
+
+function consumeInterval({ timerMs, intervalMs }) {
+  return timerMs >= intervalMs;
 }
 
 function computePrestigeXpGain({ runXpGain, gainRate }) {

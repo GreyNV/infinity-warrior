@@ -17,6 +17,8 @@ export const GAME_CONFIG = {
     endurancePrestigeGain: 0.08
   },
   combat: {
+    playerAttackIntervalMs: 650,
+    enemyAttackIntervalMs: 950,
     playerBaseAttack: 6,
     strengthAttackPerLevel: 1.6,
     strengthPrestigeAttackPerLevel: 0.35,
