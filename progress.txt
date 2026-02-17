@@ -87,3 +87,7 @@
 - Added region/biome-aware rendering in `src/render.js`, including per-hex biome fills/strokes and a top-panel region label so movement reads as traveling through different locations.
 - Added configurable world biome bands/palette entries in `src/config.js` (`world.biomeBandSize` + `world.biomes`) so environment themes can be tuned without renderer rewrites.
 - Ran lightweight validation checks (`node --check`, simulation smoke run) and captured an updated UI screenshot.
+2026-02-17 (top panel layering fix after background update)
+- Checked `progress.txt` before starting this UI bugfix and reviewed AGENTS character-sheet workflow constraints.
+- Updated `src/render.js` draw order so the top status panel is rendered after world/grid/entity layers, preventing biome background hexes from visually covering panel content.
+- Ran lightweight validation checks (`node --check`) and captured an updated screenshot to verify panel readability.

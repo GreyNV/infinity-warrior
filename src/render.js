@@ -102,10 +102,10 @@ function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, at
 
   const camera = createCamera(state.battlePositions.playerHex);
 
-  drawTopPanel({ ctx, state, config, worldRegion });
   drawHexGrid({ ctx, camera, centerHex: state.battlePositions.playerHex, config });
   drawEntities({ ctx, state, hitFlash, attackAnim, units });
   drawParticles({ ctx, particles });
+  drawTopPanel({ ctx, state, config, worldRegion });
   drawCombatHpBars({ ctx, state, config });
   drawAttackTimers({ ctx, state, config });
   drawBars({ ctx, state, config });
