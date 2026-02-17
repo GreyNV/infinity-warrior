@@ -83,8 +83,8 @@ function drawTopPanel({ ctx, state, config }) {
   ctx.fillText(`Best ${state.bestFloor}`, 40, 112);
 
   ctx.font = '16px Inter, sans-serif';
-  ctx.fillText(`STR Lv ${state.run.strengthLevel} (P${state.persistent.strengthPrestigeLevel})`, 280, 52);
-  ctx.fillText(`END Lv ${state.run.enduranceLevel} (P${state.persistent.endurancePrestigeLevel})`, 280, 82);
+  ctx.fillText(`STR ${state.run.strengthLevel} (${state.persistent.strengthPrestigeLevel})`, 280, 52);
+  ctx.fillText(`END ${state.run.enduranceLevel} (${state.persistent.endurancePrestigeLevel})`, 280, 82);
 
   ctx.fillStyle = COLORS.muted;
   ctx.fillText(`HP ${state.run.hp} / ${maxHp}`, 610, 52);
@@ -138,44 +138,35 @@ function drawCombatHpBars({ ctx, state, config }) {
 }
 
 function drawBars({ ctx, state, config }) {
-  const bars = [
-    {
-      label: 'Strength XP',
-      value: state.run.strengthXp,
-      max: Math.max(1, Math.floor(config.progression.runXpBase * Math.pow(state.run.strengthLevel, config.progression.runXpExp))),
-      y: 430,
-      color: COLORS.xp,
-      back: COLORS.xpBack
-    },
-    {
-      label: 'Endurance XP',
-      value: state.run.enduranceXp,
-      max: Math.max(1, Math.floor(config.progression.runXpBase * Math.pow(state.run.enduranceLevel, config.progression.runXpExp))),
-      y: 470,
-      color: COLORS.xp,
-      back: COLORS.xpBack
-    },
-    {
-      label: 'STR Prestige XP',
-      value: state.persistent.strengthPrestigeXp,
-      max: Math.max(1, Math.floor(config.progression.prestigeXpBase * Math.pow(state.persistent.strengthPrestigeLevel + 1, config.progression.prestigeXpExp))),
-      y: 510,
-      color: COLORS.prestige,
-      back: '#4b3606'
-    },
-    {
-      label: 'END Prestige XP',
-      value: state.persistent.endurancePrestigeXp,
-      max: Math.max(1, Math.floor(config.progression.prestigeXpBase * Math.pow(state.persistent.endurancePrestigeLevel + 1, config.progression.prestigeXpExp))),
-      y: 535,
-      color: COLORS.prestige,
-      back: '#4b3606'
-    }
-  ];
+  drawAttributeProgress({
+    ctx,
+    label: 'Strength',
+    level: state.run.strengthLevel,
+    prestigeLevel: state.persistent.strengthPrestigeLevel,
+    xpValue: state.run.strengthXp,
+    xpMax: Math.max(1, Math.floor(config.progression.runXpBase * Math.pow(state.run.strengthLevel, config.progression.runXpExp))),
+    prestigeXpValue: state.persistent.strengthPrestigeXp,
+    prestigeXpMax: Math.max(
+      1,
+      Math.floor(config.progression.prestigeXpBase * Math.pow(state.persistent.strengthPrestigeLevel + 1, config.progression.prestigeXpExp))
+    ),
+    y: 430
+  });
 
-  for (const bar of bars) {
-    drawProgressBar({ ctx, ...bar });
-  }
+  drawAttributeProgress({
+    ctx,
+    label: 'Endurance',
+    level: state.run.enduranceLevel,
+    prestigeLevel: state.persistent.endurancePrestigeLevel,
+    xpValue: state.run.enduranceXp,
+    xpMax: Math.max(1, Math.floor(config.progression.runXpBase * Math.pow(state.run.enduranceLevel, config.progression.runXpExp))),
+    prestigeXpValue: state.persistent.endurancePrestigeXp,
+    prestigeXpMax: Math.max(
+      1,
+      Math.floor(config.progression.prestigeXpBase * Math.pow(state.persistent.endurancePrestigeLevel + 1, config.progression.prestigeXpExp))
+    ),
+    y: 490
+  });
 }
 
 function drawProgressBar({ ctx, label, value, max, y, color, back }) {
@@ -192,6 +183,34 @@ function drawProgressBar({ ctx, label, value, max, y, color, back }) {
   ctx.fillStyle = COLORS.text;
   ctx.font = '13px Inter, sans-serif';
   ctx.fillText(`${label}: ${value} / ${max}`, x + 10, y + 15);
+}
+
+function drawAttributeProgress({ ctx, label, level, prestigeLevel, xpValue, xpMax, prestigeXpValue, prestigeXpMax, y }) {
+  drawProgressBar({
+    ctx,
+    label: `${label} ${level} (${prestigeLevel})`,
+    value: xpValue,
+    max: xpMax,
+    y,
+    color: COLORS.xp,
+    back: COLORS.xpBack
+  });
+
+  const subY = y + 23;
+  const subRatio = Math.max(0, Math.min(1, prestigeXpValue / prestigeXpMax));
+  const x = 40;
+  const width = 840;
+  const subHeight = 10;
+
+  ctx.fillStyle = '#4b3606';
+  ctx.fillRect(x, subY, width, subHeight);
+  ctx.fillStyle = COLORS.prestige;
+  ctx.fillRect(x, subY, width * subRatio, subHeight);
+
+  ctx.fillStyle = COLORS.muted;
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillText(`Prestige XP ${prestigeXpValue} / ${prestigeXpMax}`, x + 8, subY + 8);
+
 }
 
 function drawPopups({ ctx, popups }) {

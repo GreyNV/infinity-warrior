@@ -224,7 +224,11 @@ function applyEnemyAttack({ state, playerStats, config, events }) {
 }
 
 function computePrestigeXpGain({ runXpGain, gainRate }) {
-  return Math.floor(runXpGain * gainRate);
+  if (runXpGain <= 0 || gainRate <= 0) {
+    return 0;
+  }
+
+  return Math.max(1, Math.floor(runXpGain * gainRate));
 }
 
 function processStrengthRunLevelUps({ run, config, events }) {
