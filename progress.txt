@@ -40,3 +40,8 @@
 - Replaced dynamic string-key level-up processors with explicit, stat-specific level-up functions to keep each function narrowly scoped and easier to read/maintain.
 - Updated `AGENTS.md` with a coding philosophy section that explicitly requires concise/reusable code, single-responsibility functions, and object-parameter style for functions that would otherwise exceed two arguments.
 - Ran a Node smoke check after refactor to validate simulation invariants and level-up progression behavior.
+2026-02-17 (step-4 implementation: minimal Canvas combat view)
+- Checked `progress.txt` before starting this task and reviewed AGENTS character-sheet workflow/constraints.
+- Added a runnable browser entrypoint (`index.html` + `src/main.js`) with a fixed-step simulation loop that keeps simulation logic separate from rendering.
+- Added `src/render.js` with minimalist geometric Canvas rendering (player circle/enemy square), combat hit flashes, floating damage/XP popups, and readable HP/XP/prestige progress bars driven by simulation state.
+- Ran lightweight validation checks (`node --check`) and captured a screenshot of the new visual combat view.
