@@ -23,3 +23,9 @@
 - Updated progression config to include XP conversion coefficients and prestige-based XP boost coefficients for Strength and Endurance.
 - Updated simulation tick/combat events to compute and emit XP gains where each stat's prestige level boosts XP gain for its underlying run stat.
 - Added and ran a Node smoke test that validates prestige multipliers are applied to XP gain formulas and exposed in tick combat events.
+2026-02-17 (step-2/3 implementation)
+- Checked `progress.txt` before starting this task and reviewed the AGENTS character sheet constraints.
+- Expanded `src/simulation.js` with explicit run vs persistent state slices, including run XP pools, prestige XP pools, essence resource tracking, and best-floor tracking.
+- Added progression handlers for run level-ups and prestige level-ups, plus victory rewards/advance and defeat reset flow that preserves persistent progression while resetting run stats and floor.
+- Updated per-tick simulation flow to award run/prestige XP from combat events, resolve level-ups deterministically, and emit richer combat log events.
+- Ran a Node ES module smoke simulation for several hundred ticks to validate reset/reward/progression invariants.
