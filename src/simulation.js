@@ -173,8 +173,9 @@ export function getEnemyMaxHp(floor, config = GAME_CONFIG) {
   return Math.floor(config.combat.enemyHpBase * Math.pow(floor, config.combat.enemyHpExp));
 }
 
-export function getEnemyAttack(_floor, config = GAME_CONFIG) {
-  return Math.floor(config.combat.enemyAttackBase);
+export function getEnemyAttack(floor, config = GAME_CONFIG) {
+  const floorRamp = Math.pow(Math.max(0, floor - 1), config.combat.enemyAttackExp);
+  return Math.floor(config.combat.enemyAttackBase + floorRamp);
 }
 
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
