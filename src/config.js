@@ -37,6 +37,35 @@ export const GAME_CONFIG = {
   rewards: {
     essenceBase: 10,
     essenceExp: 1.20
+  },
+  world: {
+    biomeBandSize: 9,
+    biomes: [
+      {
+        name: 'Iron Flats',
+        fill: '#1f2937',
+        accent: '#334155',
+        stroke: '#475569'
+      },
+      {
+        name: 'Ash Dunes',
+        fill: '#2b1f17',
+        accent: '#4a2f1b',
+        stroke: '#6b4226'
+      },
+      {
+        name: 'Verdant Lattice',
+        fill: '#15241b',
+        accent: '#1f3a2b',
+        stroke: '#2f6b4a'
+      },
+      {
+        name: 'Crystal Verge',
+        fill: '#1a2238',
+        accent: '#243053',
+        stroke: '#3e4f80'
+      }
+    ]
   }
 };
 

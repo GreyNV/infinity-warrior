@@ -95,13 +95,15 @@ function tickEffects({ hitFlash, popups, particles, attackAnim, alpha }) {
 }
 
 function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim, units }) {
-  ctx.fillStyle = COLORS.bg;
+  const worldRegion = getWorldRegion({ hex: state.battlePositions.playerHex, config });
+
+  ctx.fillStyle = worldRegion.fill;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const camera = createCamera(state.battlePositions.playerHex);
 
-  drawTopPanel({ ctx, state, config });
-  drawHexGrid({ ctx, camera });
+  drawTopPanel({ ctx, state, config, worldRegion });
+  drawHexGrid({ ctx, camera, centerHex: state.battlePositions.playerHex, config });
   drawEntities({ ctx, state, hitFlash, attackAnim, units });
   drawParticles({ ctx, particles });
   drawCombatHpBars({ ctx, state, config });
@@ -110,7 +112,7 @@ function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, at
   drawPopups({ ctx, popups });
 }
 
-function drawTopPanel({ ctx, state, config }) {
+function drawTopPanel({ ctx, state, config, worldRegion }) {
   ctx.fillStyle = COLORS.panel;
   ctx.fillRect(20, 20, 880, 120);
 
@@ -130,20 +132,32 @@ function drawTopPanel({ ctx, state, config }) {
   ctx.fillStyle = COLORS.muted;
   ctx.fillText(`HP ${state.run.hp} / ${maxHp}`, 610, 52);
   ctx.fillText(`Enemy HP ${state.enemy.hp} / ${enemyMaxHp}`, 610, 82);
+  ctx.fillStyle = worldRegion.stroke;
+  ctx.fillText(`Region: ${worldRegion.name}`, 610, 112);
 }
 
-function drawHexGrid({ ctx, camera }) {
-  for (let q = -GRID_RADIUS; q <= GRID_RADIUS; q += 1) {
-    for (let r = -GRID_RADIUS; r <= GRID_RADIUS; r += 1) {
-      const s = -q - r;
+function drawHexGrid({ ctx, camera, centerHex, config }) {
+  for (let qOffset = -GRID_RADIUS; qOffset <= GRID_RADIUS; qOffset += 1) {
+    for (let rOffset = -GRID_RADIUS; rOffset <= GRID_RADIUS; rOffset += 1) {
+      const q = centerHex.q + qOffset;
+      const r = centerHex.r + rOffset;
+      const sOffset = -qOffset - rOffset;
 
-      if (Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) > GRID_RADIUS) {
+      if (Math.max(Math.abs(qOffset), Math.abs(rOffset), Math.abs(sOffset)) > GRID_RADIUS) {
         continue;
       }
 
-      const center = hexToPixelWithCamera({ hex: { q, r }, camera });
-      const highlight = Math.abs(q) <= 1 && Math.abs(r) <= 1;
-      drawHexOutline({ ctx, center, color: highlight ? COLORS.gridHighlight : COLORS.grid });
+      const hex = { q, r };
+      const center = hexToPixelWithCamera({ hex, camera });
+      const worldRegion = getWorldRegion({ hex, config });
+      const highlight = getHexDistance(hex, centerHex) <= 1;
+
+      drawHexOutline({
+        ctx,
+        center,
+        strokeColor: highlight ? COLORS.gridHighlight : worldRegion.stroke,
+        fillColor: highlight ? worldRegion.accent : worldRegion.fill
+      });
     }
   }
 }
@@ -170,8 +184,9 @@ function drawEntities({ ctx, state, hitFlash, attackAnim, units }) {
   ctx.restore();
 }
 
-function drawHexOutline({ ctx, center, color }) {
-  ctx.strokeStyle = color;
+function drawHexOutline({ ctx, center, strokeColor, fillColor }) {
+  ctx.fillStyle = fillColor;
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 1;
   ctx.beginPath();
 
@@ -189,6 +204,7 @@ function drawHexOutline({ ctx, center, color }) {
   }
 
   ctx.closePath();
+  ctx.fill();
   ctx.stroke();
 }
 
@@ -224,6 +240,26 @@ function hexToAxialOffset(hex) {
     x: HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2),
     y: HEX_SIZE * 1.5 * hex.r
   };
+}
+
+function getWorldRegion({ hex, config }) {
+  const biomes = config.world?.biomes ?? [];
+
+  if (!biomes.length) {
+    return { name: 'Unknown', fill: COLORS.bg, accent: COLORS.grid, stroke: COLORS.gridHighlight };
+  }
+
+  const bandSize = Math.max(1, config.world?.biomeBandSize ?? 8);
+  const distance = getHexDistance(hex, { q: 0, r: 0 });
+  const directionalShift = Math.floor((hex.q * 2 + hex.r) / bandSize);
+  const bandIndex = Math.floor(distance / bandSize) + directionalShift;
+  const normalizedIndex = ((bandIndex % biomes.length) + biomes.length) % biomes.length;
+
+  return biomes[normalizedIndex];
+}
+
+function getHexDistance(from, to) {
+  return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs((from.q + from.r) - (to.q + to.r))) / 2;
 }
 
 function drawParticles({ ctx, particles }) {
