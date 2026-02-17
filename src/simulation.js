@@ -41,6 +41,10 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
     return buildTickResult(next, dtMs, events);
   }
 
+  if (next.ui.activeTab !== 'battle') {
+    return buildTickResult(next, dtMs, events);
+  }
+
   const playerStats = buildPlayerStats(next.run, next.persistent);
 
   tickMovement({ state: next, dtMs, config });
@@ -90,7 +94,8 @@ export function createBaselinePersistentState() {
 export function createBaselineCultivationState() {
   return {
     agilityLevel: 0,
-    cultivationMs: 0
+    cultivationMs: 0,
+    isBlocked: false
   };
 }
 
@@ -461,23 +466,31 @@ function applyUiControls({ state, controls, events }) {
 function tickCultivation({ state, dtMs, config, controls, events }) {
   if (state.ui.activeTab !== 'cultivate' || !controls.isCultivating) {
     state.cultivation.cultivationMs = 0;
+    state.cultivation.isBlocked = false;
     return;
   }
 
   state.cultivation.cultivationMs += dtMs;
+  const channelIntervalMs = Math.max(100, config.cultivation.channelIntervalMs ?? 400);
 
-  while (state.cultivation.cultivationMs >= dtMs) {
+  while (state.cultivation.cultivationMs >= channelIntervalMs) {
     const nextCost = getAgilityEssenceCost(state.cultivation.agilityLevel, config);
 
     if (state.resources.essence < nextCost) {
       state.cultivation.cultivationMs = 0;
-      events.push({ type: 'cultivationBlocked', required: nextCost });
+
+      if (!state.cultivation.isBlocked) {
+        events.push({ type: 'cultivationBlocked', required: nextCost });
+      }
+
+      state.cultivation.isBlocked = true;
       return;
     }
 
+    state.cultivation.isBlocked = false;
     state.resources.essence -= nextCost;
     state.cultivation.agilityLevel += 1;
-    state.cultivation.cultivationMs -= dtMs;
+    state.cultivation.cultivationMs -= channelIntervalMs;
     events.push({ type: 'agilityCultivated', level: state.cultivation.agilityLevel, spent: nextCost });
   }
 }

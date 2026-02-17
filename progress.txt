@@ -93,3 +93,9 @@
 - Updated `src/config.js` with cultivation balance constants (agility cost curve, logarithmic attack-speed scalar, and minimum player attack interval).
 - Updated `src/main.js` and `src/render.js` to support keyboard tab switching (`1` battle, `2` cultivate), a dedicated Cultivation panel, and combat timer/HUD integration that reflects agility speed gains.
 - Ran lightweight validation checks (`node --check`, Node smoke simulation) and captured a screenshot of the new cultivation tab UI.
+2026-02-17 (cultivation conflict-resolution follow-up)
+- Checked `progress.txt` before starting this follow-up and reviewed AGENTS character-sheet workflow constraints.
+- Updated `src/simulation.js` to treat Cultivate as a true tab mode: combat/movement ticks now pause while on the cultivation tab, while channeling remains deterministic.
+- Refined cultivation pacing in `src/config.js` + `src/simulation.js` with `cultivation.channelIntervalMs`, per-interval essence spending, and blocked-event throttling to avoid log spam.
+- Updated `src/render.js` cultivation/tab messaging to clarify paused combat, channel tick cadence, and low-essence state.
+- Ran lightweight validation checks (`node --check`, Node smoke simulation) and captured an updated cultivation screenshot.

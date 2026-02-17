@@ -140,16 +140,28 @@ function drawTopPanel({ ctx, state, config, controls, worldRegion }) {
   ctx.fillStyle = worldRegion.stroke;
   ctx.fillText(`Region: ${worldRegion.name}`, 610, 112);
 
-  drawTabs({ ctx, activeTab: state.ui.activeTab, controls });
+  drawTabs({ ctx, activeTab: state.ui.activeTab, controls, isBlocked: state.cultivation.isBlocked });
 }
 
 
-function drawTabs({ ctx, activeTab, controls }) {
+function drawTabs({ ctx, activeTab, controls, isBlocked }) {
   drawTab({ ctx, label: '1 Battle', x: 740, y: 26, isActive: activeTab === 'battle' });
   drawTab({ ctx, label: '2 Cultivate', x: 740, y: 56, isActive: activeTab === 'cultivate' });
 
   ctx.fillStyle = COLORS.muted;
   ctx.font = '11px Inter, sans-serif';
+
+  if (activeTab !== 'cultivate') {
+    ctx.fillText('Combat active', 740, 88);
+    return;
+  }
+
+  if (isBlocked) {
+    ctx.fillStyle = COLORS.damage;
+    ctx.fillText('Need more essence', 740, 88);
+    return;
+  }
+
   const channelHint = controls?.isCultivating ? 'Channeling...' : 'Hold C to channel';
   ctx.fillText(channelHint, 740, 88);
 }
@@ -180,33 +192,36 @@ function drawCultivationPanel({ ctx, state, config, controls }) {
     config
   });
   const nextCost = getAgilityEssenceCost(state.cultivation.agilityLevel, config);
+  const channelIntervalMs = Math.max(100, config.cultivation.channelIntervalMs ?? 400);
 
   ctx.font = '17px Inter, sans-serif';
   ctx.fillText(`Agility Level: ${state.cultivation.agilityLevel}`, 50, 248);
   ctx.fillText(`Attack Speed Bonus: +${(agilityBonus * 100).toFixed(1)}% (log scaling)`, 50, 278);
   ctx.fillText(`Current Attack Interval: ${attackIntervalMs}ms`, 50, 308);
   ctx.fillText(`Next Cultivation Cost: ${nextCost} Essence`, 50, 338);
+  ctx.fillText(`Channel Tick: ${channelIntervalMs}ms`, 50, 368);
 
   const isReady = state.resources.essence >= nextCost;
-  const guide = controls?.isCultivating ? 'Channeling essence...' : 'Hold C to cultivate agility';
+  const isCultivating = controls?.isCultivating && state.ui.activeTab === 'cultivate';
+  const guide = isCultivating ? 'Channeling essence...' : 'Hold C to cultivate agility';
   ctx.fillStyle = isReady ? COLORS.gain : COLORS.damage;
   ctx.font = '16px Inter, sans-serif';
-  ctx.fillText(guide, 50, 380);
+  ctx.fillText(guide, 50, 404);
 
   drawProgressBar({
     ctx,
     label: 'Essence Reserve',
     value: state.resources.essence,
     max: Math.max(nextCost, 1),
-    y: 412,
+    y: 430,
     color: COLORS.prestige,
     back: '#4b3606'
   });
 
   ctx.fillStyle = COLORS.muted;
   ctx.font = '13px Inter, sans-serif';
-  ctx.fillText('No button spam: cultivation consumes essence while you hold C in this tab.', 50, 472);
-  ctx.fillText('Press 1 to return to combat view anytime.', 50, 496);
+  ctx.fillText('No button spam: cultivation consumes essence every channel tick while C is held.', 50, 488);
+  ctx.fillText('Combat pauses while in this tab. Press 1 to return to battle.', 50, 512);
 }
 
 function drawHexGrid({ ctx, camera, centerHex, config }) {

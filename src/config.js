@@ -36,6 +36,7 @@ export const GAME_CONFIG = {
     minDamage: 1
   },
   cultivation: {
+    channelIntervalMs: 400,
     agility: {
       baseEssenceCost: 18,
       costGrowth: 1.42,
