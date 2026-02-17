@@ -10,3 +10,38 @@
 - Checked `progress.txt` before this update and applied requested prestige-system revision.
 - Updated `infinity_tower_development_plan.md` so all basic stats (Strength and Endurance) now have corresponding persistent prestige tracks, gains, formulas, UI references, save fields, and offline notes.
 - Aligned reset wording and glossary to the all-stats-prestige model.
+2026-02-17 (next-steps planning)
+- Checked `progress.txt` before starting this task per workflow instruction.
+- Replaced `README.md` with an ordered 10-step execution task plan derived from existing project documentation, covering simulation, rendering, UI, upgrades, persistence, offline progress, milestones, and balancing.
+2026-02-17 (step-1 implementation)
+- Checked `progress.txt` before starting this implementation task.
+- Added `src/config.js` with a configurable `GAME_CONFIG` object (timing, progression, combat, rewards) and deep-merge override helper for tuning.
+- Added `src/simulation.js` with deterministic, rendering-independent simulation primitives: initial state factory, enemy generation, damage formulas, XP/essence threshold helpers, combat outcome detection, and per-tick encounter resolution.
+- Ran a lightweight Node ES module smoke check to verify config overrides and one tick of combat simulation execute correctly.
+2026-02-17 (step-1 correction: prestige-to-xp boost)
+- Checked `progress.txt` before applying this correction.
+- Updated progression config to include XP conversion coefficients and prestige-based XP boost coefficients for Strength and Endurance.
+- Updated simulation tick/combat events to compute and emit XP gains where each stat's prestige level boosts XP gain for its underlying run stat.
+- Added and ran a Node smoke test that validates prestige multipliers are applied to XP gain formulas and exposed in tick combat events.
+2026-02-17 (step-2/3 implementation)
+- Checked `progress.txt` before starting this task and reviewed the AGENTS character sheet constraints.
+- Expanded `src/simulation.js` with explicit run vs persistent state slices, including run XP pools, prestige XP pools, essence resource tracking, and best-floor tracking.
+- Added progression handlers for run level-ups and prestige level-ups, plus victory rewards/advance and defeat reset flow that preserves persistent progression while resetting run stats and floor.
+- Updated per-tick simulation flow to award run/prestige XP from combat events, resolve level-ups deterministically, and emit richer combat log events.
+- Ran a Node ES module smoke simulation for several hundred ticks to validate reset/reward/progression invariants.
+2026-02-17 (refactor pass: modular single-purpose functions)
+- Checked `progress.txt` before starting this refactor task and reviewed AGENTS role/style constraints.
+- Refactored `src/simulation.js` to keep function responsibilities narrower: split tick flow into focused helpers (`applyPlayerAttack`, `applyEnemyAttack`, `resolveEncounterOutcome`, and level-up processors).
+- Converted multi-argument progression/combat outcome mutators to object-parameter signatures (`resolveLevelUps`, `applyVictory`, `applyDefeatReset`) to improve call-site clarity and future extensibility.
+- Added a lightweight Node smoke check after refactor to validate tick simulation invariants and new object-parameter level-up entrypoint behavior.
+2026-02-17 (refactor follow-up: explicit modularity + agent philosophy update)
+- Checked `progress.txt` before starting this follow-up and reviewed AGENTS constraints.
+- Updated `src/simulation.js` to make modular boundaries more explicit by removing shared `tickContext` indirection and using direct named object arguments in attack helpers.
+- Replaced dynamic string-key level-up processors with explicit, stat-specific level-up functions to keep each function narrowly scoped and easier to read/maintain.
+- Updated `AGENTS.md` with a coding philosophy section that explicitly requires concise/reusable code, single-responsibility functions, and object-parameter style for functions that would otherwise exceed two arguments.
+- Ran a Node smoke check after refactor to validate simulation invariants and level-up progression behavior.
+2026-02-17 (step-4 implementation: minimal Canvas combat view)
+- Checked `progress.txt` before starting this task and reviewed AGENTS character-sheet workflow/constraints.
+- Added a runnable browser entrypoint (`index.html` + `src/main.js`) with a fixed-step simulation loop that keeps simulation logic separate from rendering.
+- Added `src/render.js` with minimalist geometric Canvas rendering (player circle/enemy square), combat hit flashes, floating damage/XP popups, and readable HP/XP/prestige progress bars driven by simulation state.
+- Ran lightweight validation checks (`node --check`) and captured a screenshot of the new visual combat view.
