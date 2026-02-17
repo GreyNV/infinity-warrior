@@ -32,3 +32,9 @@
 ## Deliverable Expectations for Planning Tasks
 - Include: concept/core loop, mechanics, resources, upgrades, visuals, UI, formulas/balance, architecture, tick/render loops, milestones, code snippets, JSON configs, pacing constants, save/load/offline notes, glossary.
 - Keep examples practical and ready to adapt into code.
+
+## Coding Philosophy (Implementation Quality)
+- Keep code **concise and reusable**; prefer small composable helpers over long multi-purpose blocks.
+- Enforce **single responsibility**: each function should do one thing and do it clearly.
+- If a function naturally needs more than two arguments, prefer a **single object parameter** with named fields for readability and safer evolution.
+- Keep simulation logic deterministic and rendering-agnostic.

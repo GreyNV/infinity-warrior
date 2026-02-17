@@ -34,3 +34,9 @@
 - Refactored `src/simulation.js` to keep function responsibilities narrower: split tick flow into focused helpers (`applyPlayerAttack`, `applyEnemyAttack`, `resolveEncounterOutcome`, and level-up processors).
 - Converted multi-argument progression/combat outcome mutators to object-parameter signatures (`resolveLevelUps`, `applyVictory`, `applyDefeatReset`) to improve call-site clarity and future extensibility.
 - Added a lightweight Node smoke check after refactor to validate tick simulation invariants and new object-parameter level-up entrypoint behavior.
+2026-02-17 (refactor follow-up: explicit modularity + agent philosophy update)
+- Checked `progress.txt` before starting this follow-up and reviewed AGENTS constraints.
+- Updated `src/simulation.js` to make modular boundaries more explicit by removing shared `tickContext` indirection and using direct named object arguments in attack helpers.
+- Replaced dynamic string-key level-up processors with explicit, stat-specific level-up functions to keep each function narrowly scoped and easier to read/maintain.
+- Updated `AGENTS.md` with a coding philosophy section that explicitly requires concise/reusable code, single-responsibility functions, and object-parameter style for functions that would otherwise exceed two arguments.
+- Ran a Node smoke check after refactor to validate simulation invariants and level-up progression behavior.
