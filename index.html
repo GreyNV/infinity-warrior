@@ -14,22 +14,99 @@
         margin: 0;
         background: #0e1117;
         color: #e5e7eb;
+        min-height: 100vh;
         display: grid;
         place-items: center;
-        min-height: 100vh;
+      }
+      .game-shell {
+        width: min(1180px, 96vw);
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 14px;
+      }
+      .battle-wrap {
+        position: relative;
       }
       #game {
-        width: min(920px, 96vw);
-        height: min(560px, 80vh);
+        width: 100%;
+        height: min(560px, 78vh);
         border: 1px solid #253042;
         background: #121826;
         border-radius: 8px;
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       }
+      .tab-nav {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .tab-nav button {
+        border: 1px solid #2d3a4e;
+        border-radius: 8px;
+        background: #141c2a;
+        color: #cbd5e1;
+        padding: 10px 8px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      .tab-nav button.active {
+        background: #23314a;
+        border-color: #4f73a6;
+      }
+      .tab-nav button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+      .side-panel {
+        border: 1px solid #253042;
+        border-radius: 8px;
+        background: #111827;
+        padding: 14px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 12px;
+        min-height: min(620px, 86vh);
+      }
+      .panel-title { font-weight: 700; font-size: 20px; }
+      .stat-line { color: #93a3b8; margin: 4px 0; font-size: 14px; }
+      .tab-content h3 { margin: 0 0 8px; }
+      .tab-content p { margin: 4px 0; color: #93a3b8; font-size: 13px; }
+      .cultivate-slider { width: 100%; }
+      .mini-bar {
+        margin-top: 6px;
+        height: 10px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #273244;
+      }
+      .mini-bar > span {
+        display: block;
+        height: 100%;
+        background: #60a5fa;
+      }
     </style>
   </head>
   <body>
-    <canvas id="game" width="920" height="560"></canvas>
+    <div class="game-shell">
+      <section class="battle-wrap">
+        <canvas id="game" width="920" height="560"></canvas>
+        <nav class="tab-nav">
+          <button data-tab="battle" class="active" title="Battle">⚔️</button>
+          <button data-tab="growth" title="Growth">📊</button>
+          <button data-tab="cultivation" id="cultivation-tab" title="Cultivation" disabled>🌿</button>
+        </nav>
+      </section>
+
+      <aside class="side-panel">
+        <div>
+          <div class="panel-title">Infinity Warrior</div>
+          <div id="core-stats"></div>
+        </div>
+        <div class="mini-bar"><span id="agility-speed-fill" style="width:0%"></span></div>
+        <div id="tab-content" class="tab-content"></div>
+      </aside>
+    </div>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

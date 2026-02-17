@@ -18,6 +18,7 @@ export const GAME_CONFIG = {
   },
   combat: {
     playerAttackIntervalMs: 650,
+    minAttackIntervalMs: 220,
     enemyAttackIntervalMs: 950,
     movementIntervalMs: 280,
     startingHexGap: 8,
@@ -37,6 +38,13 @@ export const GAME_CONFIG = {
   rewards: {
     essenceBase: 10,
     essenceExp: 1.20
+  },
+  cultivation: {
+    maxFlowEssencePerSecond: 18,
+    agilityEssenceBase: 40,
+    agilityEssenceExp: 1.38,
+    agilitySpeedLogFactor: 0.26,
+    maxAttackSpeedMultiplier: 3
   },
   world: {
     biomeBandSize: 9,

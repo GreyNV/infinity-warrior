@@ -91,3 +91,11 @@
 - Checked `progress.txt` before starting this UI bugfix and reviewed AGENTS character-sheet workflow constraints.
 - Updated `src/render.js` draw order so the top status panel is rendered after world/grid/entity layers, preventing biome background hexes from visually covering panel content.
 - Ran lightweight validation checks (`node --check`) and captured an updated screenshot to verify panel readability.
+2026-02-17 (tabbed layout + unlockable cultivation)
+- Checked `progress.txt` before starting this task and followed AGENTS workflow constraints.
+- Reworked `index.html` layout so combat remains in the main canvas, core status moved into a right-side panel, and bottom emoji-based tab navigation (`⚔️`, `📊`, `🌿`) was added.
+- Updated `src/main.js` to manage tab state, lock/unlock cultivation navigation, and render side-panel tab content; cultivation uses a continuous flow slider (non-button mechanic) that channels Essence automatically.
+- Updated `src/simulation.js` with a new persistent Agility cultivation track (`agilityLevel`, `agilityEssence`), defeat-based cultivation unlock flag, logarithmic attack-speed multiplier, and Essence flow spending/level-up processing.
+- Updated `src/config.js` with cultivation tuning constants and a minimum attack interval clamp for speed scaling.
+- Simplified `src/render.js` to focus on battlefield rendering + combat bars while side-panel progression/info is now handled in DOM UI.
+- Ran lightweight validation checks (`node --check`, simulation smoke test) and captured an updated screenshot of the tabbed side-panel/cultivation layout.
