@@ -19,6 +19,8 @@
 
 4. **Build a minimal Canvas combat view with readable feedback.**
    - Draw geometric entities (player circle, enemy square), HP bars, hit flashes, and damage/XP popups.
+   - Set a shared baseline attack range for player and enemy (same initial value) and trigger hit visuals only once units are visibly within that range.
+   - Reduce default player/enemy render sizes so combat space can support multiple simultaneous enemies in future updates.
    - Keep rendering as a consumer of simulation state only.
    - Why fourth: visual clarity validates the loop quickly without blocking on advanced art/UI.
 
@@ -51,3 +53,13 @@
    - Execute multiple 5–10 minute play loops and adjust high-impact constants (XP curves, prestige coefficients, essence rewards, upgrade costs).
    - Record before/after values and observed pacing outcomes.
    - Why tenth: ensures MVP feels rewarding and avoids dead zones before expansion.
+
+## Planned Future Combat Extensions
+
+1. **Expand range mechanics beyond the shared baseline.**
+   - Introduce asymmetric range modifiers (player vs enemy) once summon and formation systems are in place.
+   - Why: keeps MVP combat readable now, while preserving room for tactical depth later.
+
+2. **Add summon-driven and gacha-influenced attack behavior.**
+   - Let summon types and collectible modifiers alter targeting, range profile, and attack cadence.
+   - Why: this ties long-term collection mechanics directly into combat feel and progression motivation.
