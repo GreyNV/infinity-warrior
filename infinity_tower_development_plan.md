@@ -2,13 +2,13 @@
 
 ## 0) Concept Summary and Core Loop
 **Concept:**
-*Infinity Tower* is a minimalist incremental game where the player climbs infinite floors through short auto-resolved encounters. The run starts with two core growth attributes — **Strength** and **Endurance** — that gain experience directly from combat events (damage dealt and damage taken). The player also builds a persistent **Strength Prestige** track that survives defeat resets, while **Essence** is earned from victories and accumulated across resets for meta progression.
+*Infinity Tower* is a minimalist incremental game where the player climbs infinite floors through short auto-resolved encounters. The run starts with two core growth attributes — **Strength** and **Endurance** — that gain experience directly from combat events (damage dealt and damage taken). The player builds persistent prestige tracks for all basic stats — **Strength Prestige** and **Endurance Prestige** — which survive defeat resets, while **Essence** is earned from victories and accumulated across resets for meta progression.
 
 **Core loop (engagement driver):**
 1. Start/continue climb on current floor from run level 1 stats.
 2. Resolve combat automatically; each hit grants Strength/Endurance XP from actual damage values.
 3. Win to gain Essence and advance; lose to trigger run reset back to level 1.
-4. Keep accumulated Essence and permanent Strength Prestige progress.
+4. Keep accumulated Essence and permanent prestige progress for all basic stats.
 5. Spend resources and re-climb faster using persistent gains.
 6. Repeat to push higher floors and improve long-term scaling.
 
@@ -25,9 +25,10 @@
    - Every attack grants **Strength XP = damage dealt**.
    - Every received hit grants **Endurance XP = damage received**.
    - Every attack also grants **Strength Prestige XP** using a reduced gain coefficient.
+   - Every received hit also grants **Endurance Prestige XP** using its own reduced gain coefficient.
 3. **Win/Lose Outcome**
    - Win: gain Essence and floor increment.
-   - Lose: run reset to floor 1 + base run levels (Strength/Endurance run levels reset), but Strength Prestige and Essence are retained.
+   - Lose: run reset to floor 1 + base run levels (Strength/Endurance run levels reset), but all prestige levels and Essence are retained.
 4. **Progress Gate**
    - Enemy scaling outpaces fresh run stats.
    - Permanent prestige + stored Essence create faster re-climbs after each defeat.
@@ -41,12 +42,13 @@
 - **Strength XP:** gained from damage dealt; levels run Strength.
 - **Endurance XP:** gained from damage received; levels run Endurance.
 - **Strength Prestige XP:** gained on each attack with slower scaling; increases permanent Strength Prestige level.
+- **Endurance Prestige XP:** gained on each received hit with slower scaling; increases permanent Endurance Prestige level.
 - **Essence:** awarded for successful fights and kept across resets.
 - **Floor Record:** highest floor reached; used for unlock pacing.
 
 ### Progression layers
 1. **Run progression (short-term):** Strength and Endurance run levels rise during combat, then reset on defeat.
-2. **Persistent progression (long-term):** Strength Prestige level and Essence persist across defeats.
+2. **Persistent progression (long-term):** Strength/Endurance Prestige levels and Essence persist across defeats.
 3. **Milestone unlocks:** floor-based unlocks for QoL and additional systems.
 
 **Engagement reinforcement:** two-layer progression prevents stagnation and creates both short and long goals.
@@ -58,15 +60,16 @@
 - `strengthLevel` (run)
 - `enduranceLevel` (run)
 - `strengthPrestigeLevel` (persistent)
-- `maxHp` (derived mainly from Endurance)
-- `attack` (derived mainly from Strength + Prestige bonus)
+- `endurancePrestigeLevel` (persistent)
+- `maxHp` (derived from Endurance + Endurance Prestige)
+- `attack` (derived from Strength + Strength Prestige bonus)
 - `attackSpeed` (optional secondary)
 - `essenceGainMult` (from upgrades/prestige)
 
 ### Upgrade categories
 1. **Run curve helpers:** improve XP conversion efficiency (e.g., +% Strength XP gain).
 2. **Essence economy boosters:** +Essence gain per victory.
-3. **Persistence boosters:** amplify Strength Prestige contribution to attack.
+3. **Persistence boosters:** amplify Strength/Endurance Prestige contribution to derived stats.
 4. **QoL automation:** auto-retry/auto-upgrade once milestones are reached.
 
 ### Example upgrade definition
@@ -135,8 +138,8 @@ function drawEntities(ctx, state) {
 1. **Top bar:** Floor, time played, run speed toggle.
 2. **Center panel (Canvas):** live encounter visualization.
 3. **Right panel:** Player stats + current modifiers.
-4. **Bottom panel:** upgrade buttons and current reset-retained values (Essence, STR Prestige).
-5. **Toast zone:** “Floor Cleared”, “STR Level Up!”, “Prestige Progress +X”.
+4. **Bottom panel:** upgrade buttons and current reset-retained values (Essence, STR/END Prestige).
+5. **Toast zone:** “Floor Cleared”, “STR Level Up!”, “END Prestige +X”.
 
 ### Feedback patterns
 - Color-coded gains: green for income, red for damage.
@@ -156,7 +159,8 @@ enemyAttack(floor)     = 4  * floor^1.18
 essenceReward(floor)   = 10 * floor^1.20
 strengthXpGain(hitDmg) = hitDmg
 enduranceXpGain(hitDmg)= hitDmg
-prestigeXpGain(hitDmg) = hitDmg * 0.08
+strPrestigeXpGain(hitDmg) = hitDmg * 0.08
+endPrestigeXpGain(hitDmg) = hitDmg * 0.08
 ```
 
 ### Upgrade cost/effect
@@ -164,7 +168,7 @@ prestigeXpGain(hitDmg) = hitDmg * 0.08
 xpToNextRunLevel(level)      = 20 * level^1.30
 xpToNextPrestige(level)      = 120 * level^1.55
 attackFromStrength           = 5 + strengthLevel*1.8 + strengthPrestigeLevel*0.9
-maxHpFromEndurance           = 40 + enduranceLevel*6
+maxHpFromEndurance           = 40 + enduranceLevel*6 + endurancePrestigeLevel*4
 ```
 
 ### Example early-game numbers
@@ -174,7 +178,7 @@ maxHpFromEndurance           = 40 + enduranceLevel*6
 
 ### Balancing guidelines
 1. First run-level up should occur in first 10–20 seconds.
-2. First persistent prestige level should land in first 2–4 minutes.
+2. First persistent prestige gains for both STR and END should land in first 2–4 minutes.
 3. Defeat-reset loop should feel productive because Essence and Prestige are always retained.
 4. If players stall after reset, boost base Essence reward or XP coefficients by 10–15%.
 
@@ -254,8 +258,8 @@ requestAnimationFrame(frame);
 5. **UI basics**: resource labels, upgrade buttons.
 6. **Canvas feedback**: entity shapes, HP bars, hit flashes.
 7. **Save/load**: localStorage serialization + restore.
-8. **Reset logic**: on defeat reset floor and run levels, retain Essence + Strength Prestige.
-9. **Offline progress**: timestamp diff and capped Essence/prestige simulation.
+8. **Reset logic**: on defeat reset floor and run levels, retain Essence + all basic-stat prestige levels.
+9. **Offline progress**: timestamp diff and capped Essence + STR/END prestige simulation.
 10. **Balance pass 1**: adjust XP thresholds and reset cadence.
 
 ---
@@ -289,6 +293,7 @@ function updateSimulation(dtMs, state) {
 
     // Damage-received progression
     addEnduranceXp(state, dmgTaken);
+    addEndurancePrestigeXp(state, dmgTaken * 0.08);
   }
 
   if (state.enemy.hp <= 0) handleFloorWin(state);
@@ -307,6 +312,7 @@ function handleDefeatReset(state) {
   // Persistent values remain
   // - state.resources.essence
   // - state.player.strengthPrestigeLevel
+  // - state.player.endurancePrestigeLevel
 
   state.floor = 1;
   state.player.strengthLevel = 1;
@@ -330,7 +336,8 @@ function handleDefeatReset(state) {
     "enemyAtkExp": 1.18,
     "essenceBase": 10,
     "essenceExp": 1.20,
-    "strengthPrestigeGain": 0.08
+    "strengthPrestigeGain": 0.08,
+    "endurancePrestigeGain": 0.08
   },
   "timing": {
     "simulationDtMs": 100,
@@ -368,14 +375,14 @@ function handleDefeatReset(state) {
 ## 12) Tunable Constants + Early-Game Pacing Controls
 High-impact constants:
 1. `runBase/runExp` XP curve (speed of run STR/END growth)
-2. `prestigeBase/prestigeExp` (long-term retention speed)
-3. `strengthPrestigeGain` coefficient from damage dealt
+2. `prestigeBase/prestigeExp` (long-term retention speed for all basic-stat prestige tracks)
+3. `strengthPrestigeGain` and `endurancePrestigeGain` coefficients
 4. `essenceBase/essenceExp` and upgrade cost growth
 
 ### Pacing adjustment playbook
 - If early resets feel **punishing**:
   - lower prestige XP threshold (e.g., prestigeBase 120 → 90)
-  - increase prestige gain coefficient (0.08 → 0.10)
+  - increase prestige gain coefficients (0.08 → 0.10)
   - increase Essence reward baseline by 10%
 - If progression is **too fast**:
   - raise prestige exponent (1.55 → 1.65)
@@ -388,7 +395,7 @@ Target: defeat-reset should still produce at least one persistent gain every cyc
 ## 13) Save/Load, Offline Progress, localStorage Notes
 ### Save payload
 - Player run stats (`strengthLevel`, `enduranceLevel`, current XP)
-- Persistent stats (`strengthPrestigeLevel`, `strengthPrestigeXp`)
+- Persistent stats (`strengthPrestigeLevel`, `strengthPrestigeXp`, `endurancePrestigeLevel`, `endurancePrestigeXp`)
 - Resources (`essence`)
 - Current floor + run state
 - `lastSeenTimestamp`
@@ -400,9 +407,9 @@ Target: defeat-reset should still produce at least one persistent gain every cyc
 
 ### Offline progression
 1. On load, compute `elapsed = now - lastSeenTimestamp`.
-2. Simulate condensed Essence gain and optional prestige XP gain.
+2. Simulate condensed Essence gain and optional STR/END prestige XP gain.
 3. Cap offline time (e.g., 8 hours) to protect economy.
-4. Show summary modal: “While away: +12,340 Essence, +180 STR Prestige XP”.
+4. Show summary modal: “While away: +12,340 Essence, +180 STR Prestige XP, +165 END Prestige XP”.
 
 **Engagement reinforcement:** players feel rewarded for returning without allowing runaway inflation.
 
@@ -412,11 +419,12 @@ Target: defeat-reset should still produce at least one persistent gain every cyc
 - **Floor:** one progression step in the tower.
 - **Encounter:** automatic combat event for current floor.
 - **Essence:** persistent currency earned on successful fights.
-- **Strength Prestige:** permanent strength track that survives defeat resets.
+- **Strength Prestige:** permanent Strength track that survives defeat resets.
+- **Endurance Prestige:** permanent Endurance track that survives defeat resets.
 - **Tick:** fixed simulation update step.
 - **Defeat Reset:** losing a fight sends the run back to floor 1 and resets run levels, while persistent values remain.
 - **DPS:** damage per second.
-- **Checkpoint:** safe floor fallback on loss.
+- **Reset Baseline:** the floor/stat baseline restored immediately after defeat.
 
 ---
 
