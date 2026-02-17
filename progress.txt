@@ -45,3 +45,7 @@
 - Added a runnable browser entrypoint (`index.html` + `src/main.js`) with a fixed-step simulation loop that keeps simulation logic separate from rendering.
 - Added `src/render.js` with minimalist geometric Canvas rendering (player circle/enemy square), combat hit flashes, floating damage/XP popups, and readable HP/XP/prestige progress bars driven by simulation state.
 - Ran lightweight validation checks (`node --check`) and captured a screenshot of the new visual combat view.
+2026-02-17 (next-steps review: range + scale adjustments)
+- Checked `progress.txt` before starting this planning update per workflow instruction.
+- Updated `README.md` next-steps plan to include a shared baseline attack range (player/enemy), visual hit timing only when within range, and smaller default combatant sizes to prepare for multi-enemy battles.
+- Added a future-combat extensions section in `README.md` describing later asymmetric range, summon interactions, and gacha-driven attack behavior.
