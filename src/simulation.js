@@ -14,8 +14,14 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
     resources: {
       essence: 0
     },
+    unlocks: {
+      cultivation: false
+    },
     run,
     persistent,
+    cultivation: {
+      flowRate: 0
+    },
     combatTimers: {
       playerMs: 0,
       enemyMs: 0
@@ -38,6 +44,7 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
 
   tickMovement({ state: next, dtMs, config });
   tickCombatIntervals({ state: next, dtMs, playerStats, config, events });
+  processCultivationFlow({ state: next, dtMs, config });
 
   resolveLevelUps({ run: next.run, persistent: next.persistent, config, events });
   resolveEncounterOutcome({ state: next, config, events });
@@ -76,7 +83,9 @@ export function createBaselinePersistentState() {
     strengthPrestigeLevel: 0,
     strengthPrestigeXp: 0,
     endurancePrestigeLevel: 0,
-    endurancePrestigeXp: 0
+    endurancePrestigeXp: 0,
+    agilityLevel: 0,
+    agilityEssence: 0
   };
 }
 
@@ -106,6 +115,7 @@ export function resolveLevelUps({ run, persistent, config = GAME_CONFIG, events 
   processEnduranceRunLevelUps({ run, config, events });
   processStrengthPrestigeLevelUps({ persistent, config, events });
   processEndurancePrestigeLevelUps({ persistent, config, events });
+  processAgilityCultivationLevelUps({ persistent, config, events });
 
   const playerStats = buildPlayerStats(run, persistent);
   run.hp = Math.min(run.hp, getMaxHp(playerStats, config));
@@ -133,6 +143,7 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
 export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   state.floor = 1;
   state.run = createBaselineRunState();
+  state.unlocks.cultivation = true;
 
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = getMaxHp(playerStats, config);
@@ -213,6 +224,15 @@ function buildTickResult(state, dtMs, events) {
   };
 }
 
+export function getAgilityEssenceThreshold(level, config = GAME_CONFIG) {
+  return Math.floor(config.cultivation.agilityEssenceBase * Math.pow(level + 1, config.cultivation.agilityEssenceExp));
+}
+
+export function getAgilityAttackSpeedMultiplier({ agilityLevel, config = GAME_CONFIG }) {
+  const rawMultiplier = 1 + Math.log1p(Math.max(0, agilityLevel)) * config.cultivation.agilitySpeedLogFactor;
+  return Math.min(config.cultivation.maxAttackSpeedMultiplier, rawMultiplier);
+}
+
 function applyPlayerAttack({ state, playerStats, config, events }) {
   const playerDamage = computePlayerDamage(playerStats, config);
   const strengthXpGain = computeStrengthXpGain(playerDamage, playerStats, config);
@@ -253,8 +273,11 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
   state.combatTimers.playerMs += dtMs;
   state.combatTimers.enemyMs += dtMs;
 
-  if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: config.combat.playerAttackIntervalMs })) {
-    state.combatTimers.playerMs -= config.combat.playerAttackIntervalMs;
+  const agilityMultiplier = getAgilityAttackSpeedMultiplier({ agilityLevel: state.persistent.agilityLevel, config });
+  const playerIntervalMs = Math.max(config.combat.minAttackIntervalMs, config.combat.playerAttackIntervalMs / agilityMultiplier);
+
+  if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: playerIntervalMs })) {
+    state.combatTimers.playerMs -= playerIntervalMs;
     applyPlayerAttack({ state, playerStats, config, events });
   }
 
@@ -266,6 +289,19 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
     state.combatTimers.enemyMs -= config.combat.enemyAttackIntervalMs;
     applyEnemyAttack({ state, playerStats, config, events });
   }
+}
+
+function processCultivationFlow({ state, dtMs, config }) {
+  if (!state.unlocks.cultivation) {
+    return;
+  }
+
+  const boundedFlowRate = Math.max(0, Math.min(1, state.cultivation.flowRate));
+  const requestedEssence = (dtMs / 1000) * config.cultivation.maxFlowEssencePerSecond * boundedFlowRate;
+  const spentEssence = Math.min(state.resources.essence, requestedEssence);
+
+  state.resources.essence -= spentEssence;
+  state.persistent.agilityEssence += spentEssence;
 }
 
 function consumeInterval({ timerMs, intervalMs }) {
@@ -398,6 +434,15 @@ function processEndurancePrestigeLevelUps({ persistent, config, events }) {
     persistent.endurancePrestigeXp -= requiredXp;
     persistent.endurancePrestigeLevel += 1;
     events.push({ type: 'endurancePrestigeLevelUp', level: persistent.endurancePrestigeLevel });
+  }
+}
+
+function processAgilityCultivationLevelUps({ persistent, config, events }) {
+  while (persistent.agilityEssence >= getAgilityEssenceThreshold(persistent.agilityLevel, config)) {
+    const requiredEssence = getAgilityEssenceThreshold(persistent.agilityLevel, config);
+    persistent.agilityEssence -= requiredEssence;
+    persistent.agilityLevel += 1;
+    events.push({ type: 'agilityLevelUp', level: persistent.agilityLevel });
   }
 }
 
