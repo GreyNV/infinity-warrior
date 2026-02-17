@@ -64,3 +64,10 @@
 - Checked `progress.txt` before starting this update and reviewed AGENTS character-sheet constraints.
 - Updated `src/simulation.js` incoming damage helper to `computeIncomingDamage({ enemyAttack, config })`, making the enemy-hit calculation explicitly depend on enemy attack only (not run level or prestige level).
 - Ran lightweight validation checks (`node --check` and a Node smoke assertion) to confirm incoming damage remains unchanged for identical enemy attack values regardless of progression context.
+2026-02-17 (battle UI revamp: hex grid + range-based approach)
+- Checked `progress.txt` before starting and reviewed AGENTS character-sheet workflow/constraints.
+- Updated `src/simulation.js` to add hex battle positions, movement ticks, and effective-range gating so player/enemy walk toward each other and only attack once they are neighboring hexes (`range = 1`).
+- Updated reset/advance flows to reinitialize hex positions and combat timers each new encounter.
+- Updated `src/render.js` to draw a hexagonal battle grid and render both combatants on hex coordinates with movement-aware hit popups/particles.
+- Updated `src/config.js` with configurable movement/range constants (`movementIntervalMs`, `startingHexGap`, `effectiveRangeHex`).
+- Ran lightweight validation checks (`node --check`, simulation smoke run) and captured a new screenshot of the hex-grid combat view.

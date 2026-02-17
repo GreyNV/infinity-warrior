@@ -19,6 +19,9 @@ export const GAME_CONFIG = {
   combat: {
     playerAttackIntervalMs: 650,
     enemyAttackIntervalMs: 950,
+    movementIntervalMs: 280,
+    startingHexGap: 8,
+    effectiveRangeHex: 1,
     playerBaseAttack: 6,
     strengthAttackPerLevel: 1.6,
     strengthPrestigeAttackPerLevel: 0.35,
