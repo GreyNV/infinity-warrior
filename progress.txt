@@ -76,3 +76,8 @@
 - Updated `src/simulation.js` so enemy attack now stays at base attack (no floor/endurance-linked growth), addressing perceived proportional scaling.
 - Updated victory flow to heal the player while keeping the player on their current hex and spawning the next enemy at a randomized direction at configured starting gap.
 - Ran lightweight validation checks (`node --check` and a Node smoke assertion) and captured an updated gameplay screenshot.
+2026-02-17 (enemy attack scaling + camera follow)
+- Checked `progress.txt` before starting this follow-up task and reviewed AGENTS character-sheet constraints.
+- Updated `src/simulation.js` enemy attack formula so attack now scales by floor progression (`enemyAttackBase + (floor - 1)^enemyAttackExp`), fixing the flat floor-7 attack issue from playtesting.
+- Updated `src/render.js` hex rendering to use a player-anchored camera transform so the grid view follows the player circle at all times.
+- Ran lightweight validation checks (`node --check`, Node smoke assertion for floor attack scaling) and captured an updated gameplay screenshot.

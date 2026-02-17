@@ -18,7 +18,7 @@ const COLORS = {
   gridHighlight: '#475569'
 };
 
-const GRID_ORIGIN = { x: 460, y: 290 };
+const PLAYER_SCREEN_ANCHOR = { x: 460, y: 290 };
 const HEX_SIZE = 34;
 const GRID_RADIUS = 5;
 
@@ -29,8 +29,8 @@ export function createRenderer({ canvas, config }) {
   const particles = [];
   const attackAnim = { player: 0, enemy: 0 };
   let latestUnits = {
-    player: hexToPixel({ q: -1, r: 0 }),
-    enemy: hexToPixel({ q: 1, r: 0 })
+    player: { ...PLAYER_SCREEN_ANCHOR },
+    enemy: hexToPixelWithCamera({ hex: { q: 1, r: 0 }, camera: createCamera({ q: -1, r: 0 }) })
   };
 
   return {
@@ -98,8 +98,10 @@ function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, at
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  const camera = createCamera(state.battlePositions.playerHex);
+
   drawTopPanel({ ctx, state, config });
-  drawHexGrid({ ctx });
+  drawHexGrid({ ctx, camera });
   drawEntities({ ctx, state, hitFlash, attackAnim, units });
   drawParticles({ ctx, particles });
   drawCombatHpBars({ ctx, state, config });
@@ -130,7 +132,7 @@ function drawTopPanel({ ctx, state, config }) {
   ctx.fillText(`Enemy HP ${state.enemy.hp} / ${enemyMaxHp}`, 610, 82);
 }
 
-function drawHexGrid({ ctx }) {
+function drawHexGrid({ ctx, camera }) {
   for (let q = -GRID_RADIUS; q <= GRID_RADIUS; q += 1) {
     for (let r = -GRID_RADIUS; r <= GRID_RADIUS; r += 1) {
       const s = -q - r;
@@ -139,7 +141,7 @@ function drawHexGrid({ ctx }) {
         continue;
       }
 
-      const center = hexToPixel({ q, r });
+      const center = hexToPixelWithCamera({ hex: { q, r }, camera });
       const highlight = Math.abs(q) <= 1 && Math.abs(r) <= 1;
       drawHexOutline({ ctx, center, color: highlight ? COLORS.gridHighlight : COLORS.grid });
     }
@@ -191,16 +193,36 @@ function drawHexOutline({ ctx, center, color }) {
 }
 
 function getUnitPixels(state) {
+  const camera = createCamera(state.battlePositions.playerHex);
+
   return {
-    player: hexToPixel(state.battlePositions.playerHex),
-    enemy: hexToPixel(state.battlePositions.enemyHex)
+    player: hexToPixelWithCamera({ hex: state.battlePositions.playerHex, camera }),
+    enemy: hexToPixelWithCamera({ hex: state.battlePositions.enemyHex, camera })
   };
 }
 
-function hexToPixel(hex) {
+function createCamera(playerHex) {
+  const playerOffset = hexToAxialOffset(playerHex);
+
   return {
-    x: GRID_ORIGIN.x + HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2),
-    y: GRID_ORIGIN.y + HEX_SIZE * 1.5 * hex.r
+    x: PLAYER_SCREEN_ANCHOR.x - playerOffset.x,
+    y: PLAYER_SCREEN_ANCHOR.y - playerOffset.y
+  };
+}
+
+function hexToPixelWithCamera({ hex, camera }) {
+  const offset = hexToAxialOffset(hex);
+
+  return {
+    x: camera.x + offset.x,
+    y: camera.y + offset.y
+  };
+}
+
+function hexToAxialOffset(hex) {
+  return {
+    x: HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2),
+    y: HEX_SIZE * 1.5 * hex.r
   };
 }
 
