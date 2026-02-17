@@ -81,3 +81,9 @@
 - Updated `src/simulation.js` enemy attack formula so attack now scales by floor progression (`enemyAttackBase + (floor - 1)^enemyAttackExp`), fixing the flat floor-7 attack issue from playtesting.
 - Updated `src/render.js` hex rendering to use a player-anchored camera transform so the grid view follows the player circle at all times.
 - Ran lightweight validation checks (`node --check`, Node smoke assertion for floor attack scaling) and captured an updated gameplay screenshot.
+2026-02-17 (world-follow grid + biome backgrounds)
+- Checked `progress.txt` before starting this UI follow-up and reviewed AGENTS character-sheet constraints.
+- Updated `src/render.js` hex grid generation to center around the player's world hex each frame, preventing the battlefield from disappearing after long-distance movement.
+- Added region/biome-aware rendering in `src/render.js`, including per-hex biome fills/strokes and a top-panel region label so movement reads as traveling through different locations.
+- Added configurable world biome bands/palette entries in `src/config.js` (`world.biomeBandSize` + `world.biomes`) so environment themes can be tuned without renderer rewrites.
+- Ran lightweight validation checks (`node --check`, simulation smoke run) and captured an updated UI screenshot.
