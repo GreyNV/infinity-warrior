@@ -13,3 +13,8 @@
 2026-02-17 (next-steps planning)
 - Checked `progress.txt` before starting this task per workflow instruction.
 - Replaced `README.md` with an ordered 10-step execution task plan derived from existing project documentation, covering simulation, rendering, UI, upgrades, persistence, offline progress, milestones, and balancing.
+2026-02-17 (step-1 implementation)
+- Checked `progress.txt` before starting this implementation task.
+- Added `src/config.js` with a configurable `GAME_CONFIG` object (timing, progression, combat, rewards) and deep-merge override helper for tuning.
+- Added `src/simulation.js` with deterministic, rendering-independent simulation primitives: initial state factory, enemy generation, damage formulas, XP/essence threshold helpers, combat outcome detection, and per-tick encounter resolution.
+- Ran a lightweight Node ES module smoke check to verify config overrides and one tick of combat simulation execute correctly.
