@@ -171,8 +171,8 @@ export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
   return Math.max(minDamage, Math.floor(rawDamage));
 }
 
-export function computeEnemyDamage(enemy, config = GAME_CONFIG) {
-  return Math.max(config.combat.minDamage, Math.floor(enemy.attack));
+export function computeIncomingDamage({ enemyAttack, config = GAME_CONFIG }) {
+  return Math.max(config.combat.minDamage, Math.floor(enemyAttack));
 }
 
 export function computeStrengthXpGain(damageDealt, playerStats, config = GAME_CONFIG) {
@@ -211,7 +211,7 @@ function applyPlayerAttack({ state, playerStats, config, events }) {
 }
 
 function applyEnemyAttack({ state, playerStats, config, events }) {
-  const enemyDamage = computeEnemyDamage(state.enemy, config);
+  const enemyDamage = computeIncomingDamage({ enemyAttack: state.enemy.attack, config });
   const enduranceXpGain = computeEnduranceXpGain(enemyDamage, playerStats, config);
   const endurancePrestigeXpGain = computePrestigeXpGain({
     runXpGain: enduranceXpGain,
