@@ -26,49 +26,21 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
   const events = [];
 
   if (isCombatOver(next)) {
-    return {
-      ...next,
-      elapsedMs: next.elapsedMs + dtMs,
-      combatLog: events
-    };
+    return buildTickResult(next, dtMs, events);
   }
 
   const playerStats = buildPlayerStats(next.run, next.persistent);
-  const playerDamage = computePlayerDamage(playerStats, config);
 
-  const strengthXpGain = computeStrengthXpGain(playerDamage, playerStats, config);
-  const strengthPrestigeXpGain = Math.floor(strengthXpGain * config.progression.strengthPrestigeGain);
-  next.run.strengthXp += strengthXpGain;
-  next.persistent.strengthPrestigeXp += strengthPrestigeXpGain;
-
-  next.enemy.hp = Math.max(0, next.enemy.hp - playerDamage);
-  events.push({ type: 'playerHit', amount: playerDamage, strengthXpGain, strengthPrestigeXpGain });
+  applyPlayerAttack({ state: next, playerStats, config, events });
 
   if (next.enemy.hp > 0) {
-    const enemyDamage = computeEnemyDamage(next.enemy, config);
-    const enduranceXpGain = computeEnduranceXpGain(enemyDamage, playerStats, config);
-    const endurancePrestigeXpGain = Math.floor(enduranceXpGain * config.progression.endurancePrestigeGain);
-
-    next.run.enduranceXp += enduranceXpGain;
-    next.persistent.endurancePrestigeXp += endurancePrestigeXpGain;
-    next.run.hp = Math.max(0, next.run.hp - enemyDamage);
-    events.push({ type: 'enemyHit', amount: enemyDamage, enduranceXpGain, endurancePrestigeXpGain });
+    applyEnemyAttack({ state: next, playerStats, config, events });
   }
 
-  resolveLevelUps(next.run, next.persistent, config, events);
+  resolveLevelUps({ run: next.run, persistent: next.persistent, config, events });
+  resolveEncounterOutcome({ state: next, config, events });
 
-  const outcome = getEncounterOutcome(next);
-  if (outcome === 'victory') {
-    applyVictory(next, config, events);
-  } else if (outcome === 'defeat') {
-    applyDefeatReset(next, config, events);
-  }
-
-  return {
-    ...next,
-    elapsedMs: next.elapsedMs + dtMs,
-    combatLog: events
-  };
+  return buildTickResult(next, dtMs, events);
 }
 
 export function createEnemyForFloor(floor, config = GAME_CONFIG) {
@@ -119,40 +91,17 @@ export function getEssenceReward(floor, config = GAME_CONFIG) {
   return Math.floor(config.rewards.essenceBase * Math.pow(floor, config.rewards.essenceExp));
 }
 
-export function resolveLevelUps(run, persistent, config = GAME_CONFIG, events = []) {
-  while (run.strengthXp >= getRunXpThreshold(run.strengthLevel, config)) {
-    const requiredXp = getRunXpThreshold(run.strengthLevel, config);
-    run.strengthXp -= requiredXp;
-    run.strengthLevel += 1;
-    events.push({ type: 'strengthLevelUp', level: run.strengthLevel });
-  }
-
-  while (run.enduranceXp >= getRunXpThreshold(run.enduranceLevel, config)) {
-    const requiredXp = getRunXpThreshold(run.enduranceLevel, config);
-    run.enduranceXp -= requiredXp;
-    run.enduranceLevel += 1;
-    events.push({ type: 'enduranceLevelUp', level: run.enduranceLevel });
-  }
-
-  while (persistent.strengthPrestigeXp >= getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config);
-    persistent.strengthPrestigeXp -= requiredXp;
-    persistent.strengthPrestigeLevel += 1;
-    events.push({ type: 'strengthPrestigeLevelUp', level: persistent.strengthPrestigeLevel });
-  }
-
-  while (persistent.endurancePrestigeXp >= getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config);
-    persistent.endurancePrestigeXp -= requiredXp;
-    persistent.endurancePrestigeLevel += 1;
-    events.push({ type: 'endurancePrestigeLevelUp', level: persistent.endurancePrestigeLevel });
-  }
+export function resolveLevelUps({ run, persistent, config = GAME_CONFIG, events = [] }) {
+  processStrengthRunLevelUps({ run, config, events });
+  processEnduranceRunLevelUps({ run, config, events });
+  processStrengthPrestigeLevelUps({ persistent, config, events });
+  processEndurancePrestigeLevelUps({ persistent, config, events });
 
   const playerStats = buildPlayerStats(run, persistent);
   run.hp = Math.min(run.hp, getMaxHp(playerStats, config));
 }
 
-export function applyVictory(state, config = GAME_CONFIG, events = []) {
+export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   const reward = getEssenceReward(state.floor, config);
   state.resources.essence += reward;
   state.floor += 1;
@@ -165,9 +114,10 @@ export function applyVictory(state, config = GAME_CONFIG, events = []) {
   events.push({ type: 'victory', reward, nextFloor: state.floor });
 }
 
-export function applyDefeatReset(state, config = GAME_CONFIG, events = []) {
+export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   state.floor = 1;
   state.run = createBaselineRunState();
+
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = getMaxHp(playerStats, config);
   state.enemy = createEnemyForFloor(1, config);
@@ -211,12 +161,12 @@ export function getEnemyAttack(floor, config = GAME_CONFIG) {
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
   const { playerBaseAttack, strengthAttackPerLevel, strengthPrestigeAttackPerLevel, minDamage } = config.combat;
 
-  const raw =
+  const rawDamage =
     playerBaseAttack +
     (playerStats.strengthLevel - 1) * strengthAttackPerLevel +
     playerStats.strengthPrestigeLevel * strengthPrestigeAttackPerLevel;
 
-  return Math.max(minDamage, Math.floor(raw));
+  return Math.max(minDamage, Math.floor(rawDamage));
 }
 
 export function computeEnemyDamage(enemy, config = GAME_CONFIG) {
@@ -233,4 +183,95 @@ export function computeEnduranceXpGain(damageTaken, playerStats, config = GAME_C
   const { enduranceXpPerDamage, enduranceXpBoostPerEndurancePrestigeLevel } = config.progression;
   const prestigeMultiplier = 1 + playerStats.endurancePrestigeLevel * enduranceXpBoostPerEndurancePrestigeLevel;
   return Math.floor(damageTaken * enduranceXpPerDamage * prestigeMultiplier);
+}
+
+function buildTickResult(state, dtMs, events) {
+  return {
+    ...state,
+    elapsedMs: state.elapsedMs + dtMs,
+    combatLog: events
+  };
+}
+
+function applyPlayerAttack({ state, playerStats, config, events }) {
+  const playerDamage = computePlayerDamage(playerStats, config);
+  const strengthXpGain = computeStrengthXpGain(playerDamage, playerStats, config);
+  const strengthPrestigeXpGain = computePrestigeXpGain({
+    runXpGain: strengthXpGain,
+    gainRate: config.progression.strengthPrestigeGain
+  });
+
+  state.run.strengthXp += strengthXpGain;
+  state.persistent.strengthPrestigeXp += strengthPrestigeXpGain;
+  state.enemy.hp = Math.max(0, state.enemy.hp - playerDamage);
+
+  events.push({ type: 'playerHit', amount: playerDamage, strengthXpGain, strengthPrestigeXpGain });
+}
+
+function applyEnemyAttack({ state, playerStats, config, events }) {
+  const enemyDamage = computeEnemyDamage(state.enemy, config);
+  const enduranceXpGain = computeEnduranceXpGain(enemyDamage, playerStats, config);
+  const endurancePrestigeXpGain = computePrestigeXpGain({
+    runXpGain: enduranceXpGain,
+    gainRate: config.progression.endurancePrestigeGain
+  });
+
+  state.run.enduranceXp += enduranceXpGain;
+  state.persistent.endurancePrestigeXp += endurancePrestigeXpGain;
+  state.run.hp = Math.max(0, state.run.hp - enemyDamage);
+
+  events.push({ type: 'enemyHit', amount: enemyDamage, enduranceXpGain, endurancePrestigeXpGain });
+}
+
+function computePrestigeXpGain({ runXpGain, gainRate }) {
+  return Math.floor(runXpGain * gainRate);
+}
+
+function processStrengthRunLevelUps({ run, config, events }) {
+  while (run.strengthXp >= getRunXpThreshold(run.strengthLevel, config)) {
+    const requiredXp = getRunXpThreshold(run.strengthLevel, config);
+    run.strengthXp -= requiredXp;
+    run.strengthLevel += 1;
+    events.push({ type: 'strengthLevelUp', level: run.strengthLevel });
+  }
+}
+
+function processEnduranceRunLevelUps({ run, config, events }) {
+  while (run.enduranceXp >= getRunXpThreshold(run.enduranceLevel, config)) {
+    const requiredXp = getRunXpThreshold(run.enduranceLevel, config);
+    run.enduranceXp -= requiredXp;
+    run.enduranceLevel += 1;
+    events.push({ type: 'enduranceLevelUp', level: run.enduranceLevel });
+  }
+}
+
+function processStrengthPrestigeLevelUps({ persistent, config, events }) {
+  while (persistent.strengthPrestigeXp >= getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config)) {
+    const requiredXp = getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config);
+    persistent.strengthPrestigeXp -= requiredXp;
+    persistent.strengthPrestigeLevel += 1;
+    events.push({ type: 'strengthPrestigeLevelUp', level: persistent.strengthPrestigeLevel });
+  }
+}
+
+function processEndurancePrestigeLevelUps({ persistent, config, events }) {
+  while (persistent.endurancePrestigeXp >= getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config)) {
+    const requiredXp = getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config);
+    persistent.endurancePrestigeXp -= requiredXp;
+    persistent.endurancePrestigeLevel += 1;
+    events.push({ type: 'endurancePrestigeLevelUp', level: persistent.endurancePrestigeLevel });
+  }
+}
+
+function resolveEncounterOutcome({ state, config, events }) {
+  const outcome = getEncounterOutcome(state);
+
+  if (outcome === 'victory') {
+    applyVictory({ state, config, events });
+    return;
+  }
+
+  if (outcome === 'defeat') {
+    applyDefeatReset({ state, config, events });
+  }
 }
