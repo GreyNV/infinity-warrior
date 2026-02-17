@@ -1,4 +1,4 @@
-import { getEnemyMaxHp, getMaxHp } from './simulation.js';
+import { getMaxHp } from './simulation.js';
 
 const COLORS = {
   bg: '#111827',
@@ -43,21 +43,21 @@ export function createRenderer({ canvas, config }) {
           attackAnim.player = 1;
           popups.push(createPopup({ text: `-${event.amount}`, x: latestUnits.enemy.x - 6, y: latestUnits.enemy.y - 44, color: COLORS.damage }));
         }
-
         if (event.type === 'enemyHit') {
           hitFlash.player = 1;
           attackAnim.enemy = 1;
           popups.push(createPopup({ text: `-${event.amount}`, x: latestUnits.player.x - 6, y: latestUnits.player.y - 44, color: COLORS.damage }));
         }
-
         if (event.type === 'victory') {
           particles.push(...createBurstParticles({ x: latestUnits.enemy.x, y: latestUnits.enemy.y, color: COLORS.enemy }));
           popups.push(createPopup({ text: `+${event.reward} Essence`, x: 24, y: 100, color: COLORS.gain, life: 50 }));
         }
-
+        if (event.type === 'spawnEnemy') {
+          popups.push(createPopup({ text: `${event.biome} ${event.rarity}`, x: 24, y: 130, color: COLORS.xp, life: 48 }));
+        }
         if (event.type === 'defeat') {
           particles.push(...createBurstParticles({ x: latestUnits.player.x, y: latestUnits.player.y, color: COLORS.player }));
-          popups.push(createPopup({ text: 'Defeat: cultivation unlocked', x: 24, y: 130, color: COLORS.gain, life: 72 }));
+          popups.push(createPopup({ text: 'Defeat: cultivation unlocked', x: 24, y: 160, color: COLORS.gain, life: 72 }));
         }
       }
     }
@@ -66,7 +66,6 @@ export function createRenderer({ canvas, config }) {
 
 function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim, units }) {
   const worldRegion = getWorldRegion({ hex: state.battlePositions.playerHex, config });
-
   ctx.fillStyle = worldRegion.fill;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -82,12 +81,16 @@ function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, at
 
 function drawWorldHint({ ctx, worldRegion, state }) {
   ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
-  ctx.fillRect(16, 14, 280, 56);
+  ctx.fillRect(16, 14, 360, 74);
   ctx.fillStyle = COLORS.text;
   ctx.font = '14px Inter, sans-serif';
-  ctx.fillText(`Region: ${worldRegion.name}`, 28, 36);
+  ctx.fillText(`Region: ${worldRegion.name} · Depth ${state.world.travelDepth}`, 28, 36);
   ctx.fillStyle = COLORS.muted;
-  ctx.fillText(`Floor ${state.floor} · Essence ${state.resources.essence}`, 28, 56);
+  const chainLabel = state.enemy ? `Chain ${state.world.pendingEncounters + 1}` : 'Exploring';
+  ctx.fillText(`Floor ${state.floor} · Essence ${state.resources.essence} · ${chainLabel}`, 28, 56);
+  if (state.enemy) {
+    ctx.fillText(`${state.enemy.rarity.label} ${state.enemy.biome.name}`, 28, 76);
+  }
 }
 
 function tickEffects({ hitFlash, popups, particles, attackAnim, alpha }) {
@@ -95,13 +98,11 @@ function tickEffects({ hitFlash, popups, particles, attackAnim, alpha }) {
   hitFlash.enemy = Math.max(0, hitFlash.enemy - 0.08 * alpha);
   attackAnim.player = Math.max(0, attackAnim.player - 0.11 * alpha);
   attackAnim.enemy = Math.max(0, attackAnim.enemy - 0.11 * alpha);
-
   for (let i = popups.length - 1; i >= 0; i -= 1) {
     popups[i].life -= alpha;
     popups[i].y -= 0.35 * alpha;
     if (popups[i].life <= 0) popups.splice(i, 1);
   }
-
   for (let i = particles.length - 1; i >= 0; i -= 1) {
     particles[i].life -= alpha;
     particles[i].x += particles[i].vx * alpha;
@@ -148,28 +149,37 @@ function drawEntities({ ctx, state, hitFlash, attackAnim, units }) {
   ctx.fill();
   ctx.restore();
 
+  if (!state.enemy || !state.battlePositions.enemyHex) return;
+
   ctx.save();
   ctx.translate(units.enemy.x + enemyLunge, units.enemy.y);
   ctx.rotate(Math.sin(state.elapsedMs / 350) * 0.04);
-  ctx.fillStyle = blendFlash(COLORS.enemy, '#ffffff', hitFlash.enemy);
+  ctx.fillStyle = blendFlash(state.enemy.biome.enemyColor ?? COLORS.enemy, '#ffffff', hitFlash.enemy);
   ctx.fillRect(-22, -22, 44, 44);
+  ctx.strokeStyle = state.enemy.rarity.color;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-25, -25, 50, 50);
   ctx.restore();
 }
 
 function drawCombatHpBars({ ctx, state, config }) {
   const playerMaxHp = Math.max(1, getMaxHp(state.playerStats, config));
-  const enemyMaxHp = Math.max(1, getEnemyMaxHp(state.floor, config));
-
   drawProgressBar({ ctx, label: 'Player HP', value: state.run.hp, max: playerMaxHp, y: 468, color: COLORS.hp, back: COLORS.hpBack });
-  drawProgressBar({ ctx, label: 'Enemy HP', value: state.enemy.hp, max: enemyMaxHp, y: 500, color: COLORS.hp, back: COLORS.hpBack });
+
+  if (!state.enemy) {
+    drawProgressBar({ ctx, label: 'No enemy in range', value: 0, max: 1, y: 500, color: COLORS.hpBack, back: COLORS.hpBack });
+    return;
+  }
+
+  drawProgressBar({ ctx, label: `${state.enemy.rarity.label} HP`, value: state.enemy.hp, max: state.enemy.maxHp, y: 500, color: COLORS.hp, back: COLORS.hpBack });
 }
 
 function drawAttackTimers({ ctx, state, config }) {
   const playerRatio = Math.max(0, Math.min(1, state.combatTimers.playerMs / config.combat.playerAttackIntervalMs));
-  const enemyRatio = Math.max(0, Math.min(1, state.combatTimers.enemyMs / config.combat.enemyAttackIntervalMs));
+  const enemyRatio = state.enemy ? Math.max(0, Math.min(1, state.combatTimers.enemyMs / config.combat.enemyAttackIntervalMs)) : 0;
 
   drawMiniTimer({ ctx, x: 140, y: 436, ratio: playerRatio, label: 'Player Swing' });
-  drawMiniTimer({ ctx, x: 560, y: 436, ratio: enemyRatio, label: 'Enemy Swing' });
+  drawMiniTimer({ ctx, x: 560, y: 436, ratio: enemyRatio, label: state.enemy ? 'Enemy Swing' : 'No Target' });
 }
 
 function drawMiniTimer({ ctx, x, y, ratio, label }) {
@@ -186,7 +196,7 @@ function drawProgressBar({ ctx, label, value, max, y, color, back }) {
   const x = 40;
   const width = 840;
   const height = 22;
-  const ratio = Math.max(0, Math.min(1, value / max));
+  const ratio = Math.max(0, Math.min(1, value / Math.max(1, max)));
 
   ctx.fillStyle = back;
   ctx.fillRect(x, y, width, height);
@@ -195,7 +205,7 @@ function drawProgressBar({ ctx, label, value, max, y, color, back }) {
 
   ctx.fillStyle = COLORS.text;
   ctx.font = '13px Inter, sans-serif';
-  ctx.fillText(`${label}: ${Math.floor(value)} / ${max}`, x + 10, y + 15);
+  ctx.fillText(`${label}: ${Math.floor(value)} / ${Math.floor(max)}`, x + 10, y + 15);
 }
 
 function drawHexOutline({ ctx, center, strokeColor, fillColor }) {
@@ -219,7 +229,7 @@ function getUnitPixels(state) {
   const camera = createCamera(state.battlePositions.playerHex);
   return {
     player: hexToPixelWithCamera({ hex: state.battlePositions.playerHex, camera }),
-    enemy: hexToPixelWithCamera({ hex: state.battlePositions.enemyHex, camera })
+    enemy: hexToPixelWithCamera({ hex: state.battlePositions.enemyHex ?? state.battlePositions.playerHex, camera })
   };
 }
 
@@ -251,7 +261,7 @@ function getWorldRegion({ hex, config }) {
 }
 
 function getHexDistance(from, to) {
-  return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs((from.q + from.r) - (to.q + to.r))) / 2;
+  return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs(from.q + from.r - to.q - to.r)) / 2;
 }
 
 function drawParticles({ ctx, particles }) {

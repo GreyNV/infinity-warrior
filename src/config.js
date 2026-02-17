@@ -33,7 +33,20 @@ export const GAME_CONFIG = {
     enemyHpExp: 1.35,
     enemyAttackBase: 4,
     enemyAttackExp: 1.18,
-    minDamage: 1
+    minDamage: 1,
+    biomeModifiers: {
+      IronFlats: { hp: 1.1, attack: 0.95 },
+      AshDunes: { hp: 0.9, attack: 1.18 },
+      VerdantLattice: { hp: 1.28, attack: 0.88 },
+      CrystalVerge: { hp: 1.02, attack: 1.08 }
+    },
+    rarityTiers: [
+      { key: 'common', chance: 0.53, hp: 1, attack: 1, color: '#9ca3af', label: 'Common' },
+      { key: 'uncommon', chance: 0.25, hp: 1.35, attack: 1.2, color: '#34d399', label: 'Uncommon' },
+      { key: 'rare', chance: 0.13, hp: 1.8, attack: 1.45, color: '#60a5fa', label: 'Rare' },
+      { key: 'epic', chance: 0.07, hp: 2.45, attack: 1.9, color: '#c084fc', label: 'Epic' },
+      { key: 'legendary', chance: 0.02, hp: 3.4, attack: 2.7, color: '#f59e0b', label: 'Legendary' }
+    ]
   },
   rewards: {
     essenceBase: 10,
@@ -48,30 +61,43 @@ export const GAME_CONFIG = {
   },
   world: {
     biomeBandSize: 9,
+    revealSpawnChanceBase: 0.48,
+    revealSpawnChanceGrowthPerDepth: 0.0025,
+    revealSpawnChanceCap: 0.9,
+    consecutiveEnemiesDepthStep: 12,
+    consecutiveEnemiesBase: 1,
     biomes: [
       {
+        key: 'IronFlats',
         name: 'Iron Flats',
         fill: '#1f2937',
         accent: '#334155',
-        stroke: '#475569'
+        stroke: '#475569',
+        enemyColor: '#ef4444'
       },
       {
+        key: 'AshDunes',
         name: 'Ash Dunes',
         fill: '#2b1f17',
         accent: '#4a2f1b',
-        stroke: '#6b4226'
+        stroke: '#6b4226',
+        enemyColor: '#f97316'
       },
       {
+        key: 'VerdantLattice',
         name: 'Verdant Lattice',
         fill: '#15241b',
         accent: '#1f3a2b',
-        stroke: '#2f6b4a'
+        stroke: '#2f6b4a',
+        enemyColor: '#22c55e'
       },
       {
+        key: 'CrystalVerge',
         name: 'Crystal Verge',
         fill: '#1a2238',
         accent: '#243053',
-        stroke: '#3e4f80'
+        stroke: '#3e4f80',
+        enemyColor: '#38bdf8'
       }
     ]
   }
