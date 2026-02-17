@@ -20,33 +20,47 @@ export function createRenderer({ canvas, config }) {
   const ctx = canvas.getContext('2d');
   const hitFlash = { player: 0, enemy: 0 };
   const popups = [];
+  const particles = [];
+  const attackAnim = { player: 0, enemy: 0 };
 
   return {
     render({ state, alpha = 1 }) {
-      tickEffects({ hitFlash, popups, alpha });
-      drawScene({ ctx, canvas, state, config, hitFlash, popups });
+      tickEffects({ hitFlash, popups, particles, attackAnim, alpha });
+      drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim });
     },
     ingestEvents(events) {
       for (const event of events) {
         if (event.type === 'playerHit') {
           hitFlash.enemy = 1;
+          attackAnim.player = 1;
           popups.push(createPopup({ text: `-${event.amount}`, x: 650, y: 250, color: COLORS.damage }));
           popups.push(createPopup({ text: `+${event.strengthXpGain} STR XP`, x: 340, y: 145, color: COLORS.gain, life: 54 }));
         }
 
         if (event.type === 'enemyHit') {
           hitFlash.player = 1;
+          attackAnim.enemy = 1;
           popups.push(createPopup({ text: `-${event.amount}`, x: 270, y: 250, color: COLORS.damage }));
           popups.push(createPopup({ text: `+${event.enduranceXpGain} END XP`, x: 340, y: 175, color: COLORS.gain, life: 54 }));
+        }
+
+        if (event.type === 'victory') {
+          particles.push(...createBurstParticles({ x: 650, y: 290, color: COLORS.enemy }));
+        }
+
+        if (event.type === 'defeat') {
+          particles.push(...createBurstParticles({ x: 270, y: 290, color: COLORS.player }));
         }
       }
     }
   };
 }
 
-function tickEffects({ hitFlash, popups, alpha }) {
+function tickEffects({ hitFlash, popups, particles, attackAnim, alpha }) {
   hitFlash.player = Math.max(0, hitFlash.player - 0.08 * alpha);
   hitFlash.enemy = Math.max(0, hitFlash.enemy - 0.08 * alpha);
+  attackAnim.player = Math.max(0, attackAnim.player - 0.11 * alpha);
+  attackAnim.enemy = Math.max(0, attackAnim.enemy - 0.11 * alpha);
 
   for (let i = popups.length - 1; i >= 0; i -= 1) {
     popups[i].life -= alpha;
@@ -56,15 +70,28 @@ function tickEffects({ hitFlash, popups, alpha }) {
       popups.splice(i, 1);
     }
   }
+
+  for (let i = particles.length - 1; i >= 0; i -= 1) {
+    particles[i].life -= alpha;
+    particles[i].x += particles[i].vx * alpha;
+    particles[i].y += particles[i].vy * alpha;
+    particles[i].vy += 0.06 * alpha;
+
+    if (particles[i].life <= 0) {
+      particles.splice(i, 1);
+    }
+  }
 }
 
-function drawScene({ ctx, canvas, state, config, hitFlash, popups }) {
+function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim }) {
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawTopPanel({ ctx, state, config });
-  drawEntities({ ctx, state, hitFlash });
+  drawEntities({ ctx, state, hitFlash, attackAnim });
+  drawParticles({ ctx, particles });
   drawCombatHpBars({ ctx, state, config });
+  drawAttackTimers({ ctx, state, config });
   drawBars({ ctx, state, config });
   drawPopups({ ctx, popups });
 }
@@ -91,11 +118,13 @@ function drawTopPanel({ ctx, state, config }) {
   ctx.fillText(`Enemy HP ${state.enemy.hp} / ${enemyMaxHp}`, 610, 82);
 }
 
-function drawEntities({ ctx, state, hitFlash }) {
+function drawEntities({ ctx, state, hitFlash, attackAnim }) {
   const pulse = 1 + Math.sin(state.elapsedMs / 200) * 0.03;
+  const playerLunge = attackAnim.player > 0 ? 22 * Math.sin(attackAnim.player * Math.PI) : 0;
+  const enemyLunge = attackAnim.enemy > 0 ? -18 * Math.sin(attackAnim.enemy * Math.PI) : 0;
 
   ctx.save();
-  ctx.translate(270, 290);
+  ctx.translate(270 + playerLunge, 290);
   ctx.scale(pulse, pulse);
   ctx.beginPath();
   ctx.arc(0, 0, 55, 0, Math.PI * 2);
@@ -104,11 +133,21 @@ function drawEntities({ ctx, state, hitFlash }) {
   ctx.restore();
 
   ctx.save();
-  ctx.translate(650, 290);
+  ctx.translate(650 + enemyLunge, 290);
   ctx.rotate(Math.sin(state.elapsedMs / 350) * 0.04);
   ctx.fillStyle = blendFlash(COLORS.enemy, '#ffffff', hitFlash.enemy);
   ctx.fillRect(-55, -55, 110, 110);
   ctx.restore();
+}
+
+function drawParticles({ ctx, particles }) {
+  for (const particle of particles) {
+    ctx.globalAlpha = particle.life / particle.maxLife;
+    ctx.fillStyle = particle.color;
+    ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+  }
+
+  ctx.globalAlpha = 1;
 }
 
 
@@ -169,6 +208,24 @@ function drawBars({ ctx, state, config }) {
   });
 }
 
+function drawAttackTimers({ ctx, state, config }) {
+  const playerRatio = Math.max(0, Math.min(1, state.combatTimers.playerMs / config.combat.playerAttackIntervalMs));
+  const enemyRatio = Math.max(0, Math.min(1, state.combatTimers.enemyMs / config.combat.enemyAttackIntervalMs));
+
+  drawMiniTimer({ ctx, x: 180, y: 340, ratio: playerRatio, label: 'Player Swing' });
+  drawMiniTimer({ ctx, x: 560, y: 340, ratio: enemyRatio, label: 'Enemy Swing' });
+}
+
+function drawMiniTimer({ ctx, x, y, ratio, label }) {
+  ctx.fillStyle = COLORS.hpBack;
+  ctx.fillRect(x, y, 180, 10);
+  ctx.fillStyle = COLORS.xp;
+  ctx.fillRect(x, y, 180 * ratio, 10);
+  ctx.fillStyle = COLORS.muted;
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillText(label, x, y - 4);
+}
+
 function drawProgressBar({ ctx, label, value, max, y, color, back }) {
   const x = 40;
   const width = 840;
@@ -227,6 +284,28 @@ function drawPopups({ ctx, popups }) {
 
 function createPopup({ text, x, y, color, life = 40 }) {
   return { text, x, y, color, life, maxLife: life };
+}
+
+function createBurstParticles({ x, y, color }) {
+  const particles = [];
+
+  for (let index = 0; index < 18; index += 1) {
+    const angle = (index / 18) * Math.PI * 2;
+    const speed = 1 + Math.random() * 2.2;
+
+    particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 0.9,
+      life: 34,
+      maxLife: 34,
+      color,
+      size: 4
+    });
+  }
+
+  return particles;
 }
 
 function blendFlash(base, flash, strength) {

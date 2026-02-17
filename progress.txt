@@ -54,3 +54,9 @@
 - Updated `src/simulation.js` prestige XP gain logic to guarantee at least +1 prestige XP for positive combat XP events, ensuring strength/endurance prestige progression resolves during attacks.
 - Updated `src/render.js` progression UI so each attribute now uses a main XP bar with an attached prestige sub-progress bar, and level text uses the `Level (Prestige Level)` style.
 - Ran lightweight validation checks (`node --check` and a simulation smoke run) and captured an updated UI screenshot.
+2026-02-17 (combat readability + animation pass)
+- Checked `progress.txt` before starting and reviewed AGENTS role/style constraints.
+- Updated `src/simulation.js` to resolve combat via configurable attack intervals (`playerAttackIntervalMs`, `enemyAttackIntervalMs`) using timer accumulation, making hits cadence-based instead of every tick.
+- Updated `src/config.js` with configurable attack interval constants to keep pacing tunable without touching simulation logic.
+- Enhanced `src/render.js` with lunge-style attack animations, visible swing timer bars, and defeat particle bursts (enemy burst on victory, player burst on defeat reset).
+- Ran lightweight validation checks (`node --check`, simulation smoke run) and captured a screenshot of the updated combat visuals.
