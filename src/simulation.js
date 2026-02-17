@@ -33,13 +33,15 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
   }
 
   const playerDamage = computePlayerDamage(next.player, config);
+  const strengthXpGain = computeStrengthXpGain(playerDamage, next.player, config);
   next.enemy.hp = Math.max(0, next.enemy.hp - playerDamage);
-  events.push({ type: 'playerHit', amount: playerDamage });
+  events.push({ type: 'playerHit', amount: playerDamage, strengthXpGain });
 
   if (next.enemy.hp > 0) {
     const enemyDamage = computeEnemyDamage(next.enemy, config);
+    const enduranceXpGain = computeEnduranceXpGain(enemyDamage, next.player, config);
     next.player.hp = Math.max(0, next.player.hp - enemyDamage);
-    events.push({ type: 'enemyHit', amount: enemyDamage });
+    events.push({ type: 'enemyHit', amount: enemyDamage, enduranceXpGain });
   }
 
   const outcome = getEncounterOutcome(next);
@@ -120,4 +122,16 @@ export function computePlayerDamage(player, config = GAME_CONFIG) {
 
 export function computeEnemyDamage(enemy, config = GAME_CONFIG) {
   return Math.max(config.combat.minDamage, Math.floor(enemy.attack));
+}
+
+export function computeStrengthXpGain(damageDealt, player, config = GAME_CONFIG) {
+  const { strengthXpPerDamage, strengthXpBoostPerStrengthPrestigeLevel } = config.progression;
+  const prestigeMultiplier = 1 + player.strengthPrestigeLevel * strengthXpBoostPerStrengthPrestigeLevel;
+  return Math.floor(damageDealt * strengthXpPerDamage * prestigeMultiplier);
+}
+
+export function computeEnduranceXpGain(damageTaken, player, config = GAME_CONFIG) {
+  const { enduranceXpPerDamage, enduranceXpBoostPerEndurancePrestigeLevel } = config.progression;
+  const prestigeMultiplier = 1 + player.endurancePrestigeLevel * enduranceXpBoostPerEndurancePrestigeLevel;
+  return Math.floor(damageTaken * enduranceXpPerDamage * prestigeMultiplier);
 }

@@ -5,6 +5,10 @@ export const GAME_CONFIG = {
     offlineCapHours: 8
   },
   progression: {
+    strengthXpPerDamage: 1,
+    enduranceXpPerDamage: 1,
+    strengthXpBoostPerStrengthPrestigeLevel: 0.02,
+    enduranceXpBoostPerEndurancePrestigeLevel: 0.02,
     runXpBase: 20,
     runXpExp: 1.30,
     prestigeXpBase: 120,

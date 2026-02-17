@@ -18,3 +18,8 @@
 - Added `src/config.js` with a configurable `GAME_CONFIG` object (timing, progression, combat, rewards) and deep-merge override helper for tuning.
 - Added `src/simulation.js` with deterministic, rendering-independent simulation primitives: initial state factory, enemy generation, damage formulas, XP/essence threshold helpers, combat outcome detection, and per-tick encounter resolution.
 - Ran a lightweight Node ES module smoke check to verify config overrides and one tick of combat simulation execute correctly.
+2026-02-17 (step-1 correction: prestige-to-xp boost)
+- Checked `progress.txt` before applying this correction.
+- Updated progression config to include XP conversion coefficients and prestige-based XP boost coefficients for Strength and Endurance.
+- Updated simulation tick/combat events to compute and emit XP gains where each stat's prestige level boosts XP gain for its underlying run stat.
+- Added and ran a Node smoke test that validates prestige multipliers are applied to XP gain formulas and exposed in tick combat events.
