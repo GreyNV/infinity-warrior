@@ -9,6 +9,35 @@ let state = createInitialSimulationState(GAME_CONFIG);
 let lastFrameMs = performance.now();
 let accumulator = 0;
 
+const controls = {
+  activeTab: 'battle',
+  isCultivating: false
+};
+
+window.addEventListener('keydown', (event) => {
+  if (event.repeat) {
+    return;
+  }
+
+  if (event.key === '1') {
+    controls.activeTab = 'battle';
+  }
+
+  if (event.key === '2') {
+    controls.activeTab = 'cultivate';
+  }
+
+  if (event.key.toLowerCase() === 'c') {
+    controls.isCultivating = true;
+  }
+});
+
+window.addEventListener('keyup', (event) => {
+  if (event.key.toLowerCase() === 'c') {
+    controls.isCultivating = false;
+  }
+});
+
 requestAnimationFrame(frame);
 
 function frame(nowMs) {
@@ -17,7 +46,7 @@ function frame(nowMs) {
   accumulator += frameMs;
 
   while (accumulator >= GAME_CONFIG.timing.simulationDtMs) {
-    state = simulateTick(state, GAME_CONFIG.timing.simulationDtMs, GAME_CONFIG);
+    state = simulateTick(state, GAME_CONFIG.timing.simulationDtMs, GAME_CONFIG, controls);
     renderer.ingestEvents(state.combatLog);
     accumulator -= GAME_CONFIG.timing.simulationDtMs;
   }
@@ -27,6 +56,7 @@ function frame(nowMs) {
       ...state,
       playerStats: buildPlayerStats(state.run, state.persistent)
     },
+    controls,
     alpha: frameMs / GAME_CONFIG.timing.simulationDtMs
   });
 

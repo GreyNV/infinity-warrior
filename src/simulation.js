@@ -16,6 +16,10 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
     },
     run,
     persistent,
+    cultivation: createBaselineCultivationState(),
+    ui: {
+      activeTab: 'battle'
+    },
     combatTimers: {
       playerMs: 0,
       enemyMs: 0
@@ -26,9 +30,12 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
   };
 }
 
-export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, config = GAME_CONFIG) {
+export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, config = GAME_CONFIG, controls = {}) {
   const next = structuredClone(state);
   const events = [];
+
+  applyUiControls({ state: next, controls, events });
+  tickCultivation({ state: next, dtMs, config, controls, events });
 
   if (isCombatOver(next)) {
     return buildTickResult(next, dtMs, events);
@@ -80,6 +87,13 @@ export function createBaselinePersistentState() {
   };
 }
 
+export function createBaselineCultivationState() {
+  return {
+    agilityLevel: 0,
+    cultivationMs: 0
+  };
+}
+
 export function buildPlayerStats(run, persistent) {
   return {
     strengthLevel: run.strengthLevel,
@@ -87,6 +101,17 @@ export function buildPlayerStats(run, persistent) {
     strengthPrestigeLevel: persistent.strengthPrestigeLevel,
     endurancePrestigeLevel: persistent.endurancePrestigeLevel
   };
+}
+
+export function getAgilityEssenceCost(level, config = GAME_CONFIG) {
+  const { baseEssenceCost, costGrowth } = config.cultivation.agility;
+  return Math.max(1, Math.floor(baseEssenceCost * Math.pow(level + 1, costGrowth)));
+}
+
+export function getPlayerAttackIntervalMs({ baseIntervalMs, agilityLevel, config = GAME_CONFIG }) {
+  const speedBonus = 1 + Math.log1p(Math.max(0, agilityLevel)) * config.cultivation.agility.attackSpeedLogScale;
+  const adjusted = baseIntervalMs / Math.max(1, speedBonus);
+  return Math.max(config.combat.playerAttackIntervalMinMs, Math.floor(adjusted));
 }
 
 export function getRunXpThreshold(level, config = GAME_CONFIG) {
@@ -250,11 +275,17 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
     return;
   }
 
+  const playerIntervalMs = getPlayerAttackIntervalMs({
+    baseIntervalMs: config.combat.playerAttackIntervalMs,
+    agilityLevel: state.cultivation.agilityLevel,
+    config
+  });
+
   state.combatTimers.playerMs += dtMs;
   state.combatTimers.enemyMs += dtMs;
 
-  if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: config.combat.playerAttackIntervalMs })) {
-    state.combatTimers.playerMs -= config.combat.playerAttackIntervalMs;
+  if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: playerIntervalMs })) {
+    state.combatTimers.playerMs -= playerIntervalMs;
     applyPlayerAttack({ state, playerStats, config, events });
   }
 
@@ -411,5 +442,42 @@ function resolveEncounterOutcome({ state, config, events }) {
 
   if (outcome === 'defeat') {
     applyDefeatReset({ state, config, events });
+  }
+}
+
+function applyUiControls({ state, controls, events }) {
+  if (controls.activeTab !== 'battle' && controls.activeTab !== 'cultivate') {
+    return;
+  }
+
+  if (state.ui.activeTab === controls.activeTab) {
+    return;
+  }
+
+  state.ui.activeTab = controls.activeTab;
+  events.push({ type: 'tabChanged', tab: controls.activeTab });
+}
+
+function tickCultivation({ state, dtMs, config, controls, events }) {
+  if (state.ui.activeTab !== 'cultivate' || !controls.isCultivating) {
+    state.cultivation.cultivationMs = 0;
+    return;
+  }
+
+  state.cultivation.cultivationMs += dtMs;
+
+  while (state.cultivation.cultivationMs >= dtMs) {
+    const nextCost = getAgilityEssenceCost(state.cultivation.agilityLevel, config);
+
+    if (state.resources.essence < nextCost) {
+      state.cultivation.cultivationMs = 0;
+      events.push({ type: 'cultivationBlocked', required: nextCost });
+      return;
+    }
+
+    state.resources.essence -= nextCost;
+    state.cultivation.agilityLevel += 1;
+    state.cultivation.cultivationMs -= dtMs;
+    events.push({ type: 'agilityCultivated', level: state.cultivation.agilityLevel, spent: nextCost });
   }
 }

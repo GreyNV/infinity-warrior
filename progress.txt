@@ -87,3 +87,9 @@
 - Added region/biome-aware rendering in `src/render.js`, including per-hex biome fills/strokes and a top-panel region label so movement reads as traveling through different locations.
 - Added configurable world biome bands/palette entries in `src/config.js` (`world.biomeBandSize` + `world.biomes`) so environment themes can be tuned without renderer rewrites.
 - Ran lightweight validation checks (`node --check`, simulation smoke run) and captured an updated UI screenshot.
+2026-02-17 (cultivation tab + agility essence sink)
+- Checked `progress.txt` before starting this task and reviewed AGENTS character-sheet workflow/constraints.
+- Added a non-button cultivation system in `src/simulation.js`: new UI tab state (`battle`/`cultivate`), `agilityLevel` progression, essence-costed cultivation while holding `C`, and agility-driven logarithmic player attack-speed scaling with a minimum interval cap.
+- Updated `src/config.js` with cultivation balance constants (agility cost curve, logarithmic attack-speed scalar, and minimum player attack interval).
+- Updated `src/main.js` and `src/render.js` to support keyboard tab switching (`1` battle, `2` cultivate), a dedicated Cultivation panel, and combat timer/HUD integration that reflects agility speed gains.
+- Ran lightweight validation checks (`node --check`, Node smoke simulation) and captured a screenshot of the new cultivation tab UI.

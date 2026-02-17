@@ -1,4 +1,4 @@
-import { getEnemyMaxHp, getMaxHp } from './simulation.js';
+import { getAgilityEssenceCost, getEnemyMaxHp, getMaxHp, getPlayerAttackIntervalMs } from './simulation.js';
 
 const COLORS = {
   bg: '#111827',
@@ -34,10 +34,10 @@ export function createRenderer({ canvas, config }) {
   };
 
   return {
-    render({ state, alpha = 1 }) {
+    render({ state, controls, alpha = 1 }) {
       tickEffects({ hitFlash, popups, particles, attackAnim, alpha });
       latestUnits = getUnitPixels(state);
-      drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim, units: latestUnits });
+      drawScene({ ctx, canvas, state, config, controls, hitFlash, popups, particles, attackAnim, units: latestUnits });
     },
     ingestEvents(events) {
       for (const event of events) {
@@ -94,7 +94,7 @@ function tickEffects({ hitFlash, popups, particles, attackAnim, alpha }) {
   }
 }
 
-function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim, units }) {
+function drawScene({ ctx, canvas, state, config, controls, hitFlash, popups, particles, attackAnim, units }) {
   const worldRegion = getWorldRegion({ hex: state.battlePositions.playerHex, config });
 
   ctx.fillStyle = worldRegion.fill;
@@ -102,17 +102,22 @@ function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, at
 
   const camera = createCamera(state.battlePositions.playerHex);
 
-  drawTopPanel({ ctx, state, config, worldRegion });
-  drawHexGrid({ ctx, camera, centerHex: state.battlePositions.playerHex, config });
-  drawEntities({ ctx, state, hitFlash, attackAnim, units });
-  drawParticles({ ctx, particles });
-  drawCombatHpBars({ ctx, state, config });
-  drawAttackTimers({ ctx, state, config });
-  drawBars({ ctx, state, config });
-  drawPopups({ ctx, popups });
+  drawTopPanel({ ctx, state, config, controls, worldRegion });
+  if (state.ui.activeTab === 'battle') {
+    drawHexGrid({ ctx, camera, centerHex: state.battlePositions.playerHex, config });
+    drawEntities({ ctx, state, hitFlash, attackAnim, units });
+    drawParticles({ ctx, particles });
+    drawCombatHpBars({ ctx, state, config });
+    drawAttackTimers({ ctx, state, config });
+    drawBars({ ctx, state, config });
+    drawPopups({ ctx, popups });
+    return;
+  }
+
+  drawCultivationPanel({ ctx, state, config, controls });
 }
 
-function drawTopPanel({ ctx, state, config, worldRegion }) {
+function drawTopPanel({ ctx, state, config, controls, worldRegion }) {
   ctx.fillStyle = COLORS.panel;
   ctx.fillRect(20, 20, 880, 120);
 
@@ -134,6 +139,74 @@ function drawTopPanel({ ctx, state, config, worldRegion }) {
   ctx.fillText(`Enemy HP ${state.enemy.hp} / ${enemyMaxHp}`, 610, 82);
   ctx.fillStyle = worldRegion.stroke;
   ctx.fillText(`Region: ${worldRegion.name}`, 610, 112);
+
+  drawTabs({ ctx, activeTab: state.ui.activeTab, controls });
+}
+
+
+function drawTabs({ ctx, activeTab, controls }) {
+  drawTab({ ctx, label: '1 Battle', x: 740, y: 26, isActive: activeTab === 'battle' });
+  drawTab({ ctx, label: '2 Cultivate', x: 740, y: 56, isActive: activeTab === 'cultivate' });
+
+  ctx.fillStyle = COLORS.muted;
+  ctx.font = '11px Inter, sans-serif';
+  const channelHint = controls?.isCultivating ? 'Channeling...' : 'Hold C to channel';
+  ctx.fillText(channelHint, 740, 88);
+}
+
+function drawTab({ ctx, label, x, y, isActive }) {
+  ctx.fillStyle = isActive ? '#334155' : '#1f2937';
+  ctx.fillRect(x, y, 145, 24);
+  ctx.strokeStyle = isActive ? COLORS.xp : COLORS.grid;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, 145, 24);
+  ctx.fillStyle = isActive ? COLORS.text : COLORS.muted;
+  ctx.font = '12px Inter, sans-serif';
+  ctx.fillText(label, x + 10, y + 16);
+}
+
+function drawCultivationPanel({ ctx, state, config, controls }) {
+  ctx.fillStyle = '#101827';
+  ctx.fillRect(20, 150, 880, 390);
+
+  ctx.fillStyle = COLORS.text;
+  ctx.font = 'bold 24px Inter, sans-serif';
+  ctx.fillText('Cultivation Chamber', 50, 200);
+
+  const agilityBonus = Math.log1p(state.cultivation.agilityLevel) * config.cultivation.agility.attackSpeedLogScale;
+  const attackIntervalMs = getPlayerAttackIntervalMs({
+    baseIntervalMs: config.combat.playerAttackIntervalMs,
+    agilityLevel: state.cultivation.agilityLevel,
+    config
+  });
+  const nextCost = getAgilityEssenceCost(state.cultivation.agilityLevel, config);
+
+  ctx.font = '17px Inter, sans-serif';
+  ctx.fillText(`Agility Level: ${state.cultivation.agilityLevel}`, 50, 248);
+  ctx.fillText(`Attack Speed Bonus: +${(agilityBonus * 100).toFixed(1)}% (log scaling)`, 50, 278);
+  ctx.fillText(`Current Attack Interval: ${attackIntervalMs}ms`, 50, 308);
+  ctx.fillText(`Next Cultivation Cost: ${nextCost} Essence`, 50, 338);
+
+  const isReady = state.resources.essence >= nextCost;
+  const guide = controls?.isCultivating ? 'Channeling essence...' : 'Hold C to cultivate agility';
+  ctx.fillStyle = isReady ? COLORS.gain : COLORS.damage;
+  ctx.font = '16px Inter, sans-serif';
+  ctx.fillText(guide, 50, 380);
+
+  drawProgressBar({
+    ctx,
+    label: 'Essence Reserve',
+    value: state.resources.essence,
+    max: Math.max(nextCost, 1),
+    y: 412,
+    color: COLORS.prestige,
+    back: '#4b3606'
+  });
+
+  ctx.fillStyle = COLORS.muted;
+  ctx.font = '13px Inter, sans-serif';
+  ctx.fillText('No button spam: cultivation consumes essence while you hold C in this tab.', 50, 472);
+  ctx.fillText('Press 1 to return to combat view anytime.', 50, 496);
 }
 
 function drawHexGrid({ ctx, camera, centerHex, config }) {
@@ -330,7 +403,12 @@ function drawBars({ ctx, state, config }) {
 }
 
 function drawAttackTimers({ ctx, state, config }) {
-  const playerRatio = Math.max(0, Math.min(1, state.combatTimers.playerMs / config.combat.playerAttackIntervalMs));
+  const playerIntervalMs = getPlayerAttackIntervalMs({
+    baseIntervalMs: config.combat.playerAttackIntervalMs,
+    agilityLevel: state.cultivation.agilityLevel,
+    config
+  });
+  const playerRatio = Math.max(0, Math.min(1, state.combatTimers.playerMs / playerIntervalMs));
   const enemyRatio = Math.max(0, Math.min(1, state.combatTimers.enemyMs / config.combat.enemyAttackIntervalMs));
 
   drawMiniTimer({ ctx, x: 180, y: 340, ratio: playerRatio, label: 'Player Swing' });
