@@ -10,3 +10,6 @@
 - Checked `progress.txt` before this update and applied requested prestige-system revision.
 - Updated `infinity_tower_development_plan.md` so all basic stats (Strength and Endurance) now have corresponding persistent prestige tracks, gains, formulas, UI references, save fields, and offline notes.
 - Aligned reset wording and glossary to the all-stats-prestige model.
+2026-02-17 (next-steps planning)
+- Checked `progress.txt` before starting this task per workflow instruction.
+- Replaced `README.md` with an ordered 10-step execution task plan derived from existing project documentation, covering simulation, rendering, UI, upgrades, persistence, offline progress, milestones, and balancing.
