@@ -20,6 +20,7 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
       playerMs: 0,
       enemyMs: 0
     },
+    battlePositions: createInitialBattlePositions(config),
     enemy: createEnemyForFloor(1, config),
     combatLog: []
   };
@@ -35,6 +36,7 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
 
   const playerStats = buildPlayerStats(next.run, next.persistent);
 
+  tickMovement({ state: next, dtMs, config });
   tickCombatIntervals({ state: next, dtMs, playerStats, config, events });
 
   resolveLevelUps({ run: next.run, persistent: next.persistent, config, events });
@@ -48,6 +50,14 @@ export function createEnemyForFloor(floor, config = GAME_CONFIG) {
     floor,
     hp: getEnemyMaxHp(floor, config),
     attack: getEnemyAttack(floor, config)
+  };
+}
+
+export function createInitialBattlePositions(config = GAME_CONFIG) {
+  return {
+    playerHex: { q: -config.combat.startingHexGap, r: 0 },
+    enemyHex: { q: config.combat.startingHexGap, r: 0 },
+    movementMs: 0
   };
 }
 
@@ -107,6 +117,9 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   state.floor += 1;
   state.bestFloor = Math.max(state.bestFloor, state.floor);
   state.enemy = createEnemyForFloor(state.floor, config);
+  state.battlePositions = createInitialBattlePositions(config);
+  state.combatTimers.playerMs = 0;
+  state.combatTimers.enemyMs = 0;
 
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = getMaxHp(playerStats, config);
@@ -121,6 +134,7 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = getMaxHp(playerStats, config);
   state.enemy = createEnemyForFloor(1, config);
+  state.battlePositions = createInitialBattlePositions(config);
   state.combatTimers.playerMs = 0;
   state.combatTimers.enemyMs = 0;
 
@@ -226,6 +240,12 @@ function applyEnemyAttack({ state, playerStats, config, events }) {
 }
 
 function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
+  if (!isWithinEffectiveRange(state, config)) {
+    state.combatTimers.playerMs = 0;
+    state.combatTimers.enemyMs = 0;
+    return;
+  }
+
   state.combatTimers.playerMs += dtMs;
   state.combatTimers.enemyMs += dtMs;
 
@@ -246,6 +266,62 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
 
 function consumeInterval({ timerMs, intervalMs }) {
   return timerMs >= intervalMs;
+}
+
+function tickMovement({ state, dtMs, config }) {
+  state.battlePositions.movementMs += dtMs;
+
+  while (consumeInterval({ timerMs: state.battlePositions.movementMs, intervalMs: config.combat.movementIntervalMs })) {
+    state.battlePositions.movementMs -= config.combat.movementIntervalMs;
+    advanceTowardsRange({ battlePositions: state.battlePositions, effectiveRangeHex: config.combat.effectiveRangeHex });
+  }
+}
+
+function advanceTowardsRange({ battlePositions, effectiveRangeHex }) {
+  if (getHexDistance(battlePositions.playerHex, battlePositions.enemyHex) <= effectiveRangeHex) {
+    return;
+  }
+
+  battlePositions.playerHex = stepHexTowards({ from: battlePositions.playerHex, to: battlePositions.enemyHex });
+
+  if (getHexDistance(battlePositions.playerHex, battlePositions.enemyHex) <= effectiveRangeHex) {
+    return;
+  }
+
+  battlePositions.enemyHex = stepHexTowards({ from: battlePositions.enemyHex, to: battlePositions.playerHex });
+}
+
+function stepHexTowards({ from, to }) {
+  const options = [
+    { q: from.q + 1, r: from.r },
+    { q: from.q - 1, r: from.r },
+    { q: from.q, r: from.r + 1 },
+    { q: from.q, r: from.r - 1 },
+    { q: from.q + 1, r: from.r - 1 },
+    { q: from.q - 1, r: from.r + 1 }
+  ];
+
+  let best = from;
+  let bestDistance = getHexDistance(from, to);
+
+  for (const candidate of options) {
+    const distance = getHexDistance(candidate, to);
+
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
+function isWithinEffectiveRange(state, config) {
+  return getHexDistance(state.battlePositions.playerHex, state.battlePositions.enemyHex) <= config.combat.effectiveRangeHex;
+}
+
+function getHexDistance(from, to) {
+  return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs((from.q + from.r) - (to.q + to.r))) / 2;
 }
 
 function computePrestigeXpGain({ runXpGain, gainRate }) {

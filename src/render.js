@@ -13,8 +13,14 @@ const COLORS = {
   player: '#60a5fa',
   enemy: '#f97316',
   damage: '#fca5a5',
-  gain: '#86efac'
+  gain: '#86efac',
+  grid: '#334155',
+  gridHighlight: '#475569'
 };
+
+const GRID_ORIGIN = { x: 460, y: 290 };
+const HEX_SIZE = 34;
+const GRID_RADIUS = 5;
 
 export function createRenderer({ canvas, config }) {
   const ctx = canvas.getContext('2d');
@@ -22,34 +28,39 @@ export function createRenderer({ canvas, config }) {
   const popups = [];
   const particles = [];
   const attackAnim = { player: 0, enemy: 0 };
+  let latestUnits = {
+    player: hexToPixel({ q: -1, r: 0 }),
+    enemy: hexToPixel({ q: 1, r: 0 })
+  };
 
   return {
     render({ state, alpha = 1 }) {
       tickEffects({ hitFlash, popups, particles, attackAnim, alpha });
-      drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim });
+      latestUnits = getUnitPixels(state);
+      drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim, units: latestUnits });
     },
     ingestEvents(events) {
       for (const event of events) {
         if (event.type === 'playerHit') {
           hitFlash.enemy = 1;
           attackAnim.player = 1;
-          popups.push(createPopup({ text: `-${event.amount}`, x: 650, y: 250, color: COLORS.damage }));
+          popups.push(createPopup({ text: `-${event.amount}`, x: latestUnits.enemy.x - 6, y: latestUnits.enemy.y - 44, color: COLORS.damage }));
           popups.push(createPopup({ text: `+${event.strengthXpGain} STR XP`, x: 340, y: 145, color: COLORS.gain, life: 54 }));
         }
 
         if (event.type === 'enemyHit') {
           hitFlash.player = 1;
           attackAnim.enemy = 1;
-          popups.push(createPopup({ text: `-${event.amount}`, x: 270, y: 250, color: COLORS.damage }));
+          popups.push(createPopup({ text: `-${event.amount}`, x: latestUnits.player.x - 6, y: latestUnits.player.y - 44, color: COLORS.damage }));
           popups.push(createPopup({ text: `+${event.enduranceXpGain} END XP`, x: 340, y: 175, color: COLORS.gain, life: 54 }));
         }
 
         if (event.type === 'victory') {
-          particles.push(...createBurstParticles({ x: 650, y: 290, color: COLORS.enemy }));
+          particles.push(...createBurstParticles({ x: latestUnits.enemy.x, y: latestUnits.enemy.y, color: COLORS.enemy }));
         }
 
         if (event.type === 'defeat') {
-          particles.push(...createBurstParticles({ x: 270, y: 290, color: COLORS.player }));
+          particles.push(...createBurstParticles({ x: latestUnits.player.x, y: latestUnits.player.y, color: COLORS.player }));
         }
       }
     }
@@ -83,12 +94,13 @@ function tickEffects({ hitFlash, popups, particles, attackAnim, alpha }) {
   }
 }
 
-function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim }) {
+function drawScene({ ctx, canvas, state, config, hitFlash, popups, particles, attackAnim, units }) {
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawTopPanel({ ctx, state, config });
-  drawEntities({ ctx, state, hitFlash, attackAnim });
+  drawHexGrid({ ctx });
+  drawEntities({ ctx, state, hitFlash, attackAnim, units });
   drawParticles({ ctx, particles });
   drawCombatHpBars({ ctx, state, config });
   drawAttackTimers({ ctx, state, config });
@@ -118,26 +130,78 @@ function drawTopPanel({ ctx, state, config }) {
   ctx.fillText(`Enemy HP ${state.enemy.hp} / ${enemyMaxHp}`, 610, 82);
 }
 
-function drawEntities({ ctx, state, hitFlash, attackAnim }) {
+function drawHexGrid({ ctx }) {
+  for (let q = -GRID_RADIUS; q <= GRID_RADIUS; q += 1) {
+    for (let r = -GRID_RADIUS; r <= GRID_RADIUS; r += 1) {
+      const s = -q - r;
+
+      if (Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) > GRID_RADIUS) {
+        continue;
+      }
+
+      const center = hexToPixel({ q, r });
+      const highlight = Math.abs(q) <= 1 && Math.abs(r) <= 1;
+      drawHexOutline({ ctx, center, color: highlight ? COLORS.gridHighlight : COLORS.grid });
+    }
+  }
+}
+
+function drawEntities({ ctx, state, hitFlash, attackAnim, units }) {
   const pulse = 1 + Math.sin(state.elapsedMs / 200) * 0.03;
-  const playerLunge = attackAnim.player > 0 ? 22 * Math.sin(attackAnim.player * Math.PI) : 0;
-  const enemyLunge = attackAnim.enemy > 0 ? -18 * Math.sin(attackAnim.enemy * Math.PI) : 0;
+  const playerLunge = attackAnim.player > 0 ? 8 * Math.sin(attackAnim.player * Math.PI) : 0;
+  const enemyLunge = attackAnim.enemy > 0 ? -8 * Math.sin(attackAnim.enemy * Math.PI) : 0;
 
   ctx.save();
-  ctx.translate(270 + playerLunge, 290);
+  ctx.translate(units.player.x + playerLunge, units.player.y);
   ctx.scale(pulse, pulse);
   ctx.beginPath();
-  ctx.arc(0, 0, 55, 0, Math.PI * 2);
+  ctx.arc(0, 0, 22, 0, Math.PI * 2);
   ctx.fillStyle = blendFlash(COLORS.player, '#ffffff', hitFlash.player);
   ctx.fill();
   ctx.restore();
 
   ctx.save();
-  ctx.translate(650 + enemyLunge, 290);
+  ctx.translate(units.enemy.x + enemyLunge, units.enemy.y);
   ctx.rotate(Math.sin(state.elapsedMs / 350) * 0.04);
   ctx.fillStyle = blendFlash(COLORS.enemy, '#ffffff', hitFlash.enemy);
-  ctx.fillRect(-55, -55, 110, 110);
+  ctx.fillRect(-22, -22, 44, 44);
   ctx.restore();
+}
+
+function drawHexOutline({ ctx, center, color }) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+
+  for (let side = 0; side < 6; side += 1) {
+    const angle = ((60 * side - 30) * Math.PI) / 180;
+    const x = center.x + HEX_SIZE * Math.cos(angle);
+    const y = center.y + HEX_SIZE * Math.sin(angle);
+
+    if (side === 0) {
+      ctx.moveTo(x, y);
+      continue;
+    }
+
+    ctx.lineTo(x, y);
+  }
+
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function getUnitPixels(state) {
+  return {
+    player: hexToPixel(state.battlePositions.playerHex),
+    enemy: hexToPixel(state.battlePositions.enemyHex)
+  };
+}
+
+function hexToPixel(hex) {
+  return {
+    x: GRID_ORIGIN.x + HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2),
+    y: GRID_ORIGIN.y + HEX_SIZE * 1.5 * hex.r
+  };
 }
 
 function drawParticles({ ctx, particles }) {
@@ -149,7 +213,6 @@ function drawParticles({ ctx, particles }) {
 
   ctx.globalAlpha = 1;
 }
-
 
 function drawCombatHpBars({ ctx, state, config }) {
   const playerMaxHp = Math.max(1, getMaxHp(state.playerStats, config));
@@ -267,7 +330,6 @@ function drawAttributeProgress({ ctx, label, level, prestigeLevel, xpValue, xpMa
   ctx.fillStyle = COLORS.muted;
   ctx.font = '11px Inter, sans-serif';
   ctx.fillText(`Prestige XP ${prestigeXpValue} / ${prestigeXpMax}`, x + 8, subY + 8);
-
 }
 
 function drawPopups({ ctx, popups }) {
