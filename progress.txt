@@ -1,0 +1,8 @@
+2026-02-12
+- Checked for existing progress log before starting: `progress.txt` was not present.
+- Added root `AGENTS.md` character sheet with role, style, stack, constraints, and workflow expectations.
+- Added `infinity_tower_development_plan.md` with a structured MVP plan for the Infinity Tower incremental game, including mechanics, economy, architecture, loops, examples, and persistence notes.
+2026-02-17
+- Reviewed existing `progress.txt` before starting this revision.
+- Updated `infinity_tower_development_plan.md` to replace the core loop with a STR/END XP-on-damage system plus persistent Strength Prestige.
+- Revised mechanics, progression, formulas, milestones, snippets, tuning, save/offline notes, and glossary to match defeat-reset behavior (reset to level 1 on loss, keep Essence + Prestige).
