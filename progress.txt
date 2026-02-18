@@ -168,3 +168,8 @@
 - Removed canvas text popups and world hint overlays from `src/render.js` to reduce UI clutter and align with the requested cleanup.
 - Applied mobile-friendly responsive layout/style updates in `index.html` (single-column collapse, tighter spacing, readable controls/logs on narrow widths).
 - Ran lightweight validation checks (`node --check` suite) and captured an updated UI screenshot artifact.
+2026-02-18 (activity mode switch decoupled from tabs)
+- Checked `progress.txt` before starting this task and implemented the requested independent battle/cultivation state switch.
+- Updated `index.html` and `src/main.js` to add a dedicated Activity Mode toggle (Battle Mode / Cultivation Mode) so player state can change independently of the currently viewed tab.
+- Kept tab navigation focused on UI visibility only, while `activityMode` now changes exclusively through the new mode switch and still respects cultivation unlock gating.
+- Ran lightweight validation checks (`node --check` suite) and captured an updated screenshot artifact showing the new mode-switch controls.
