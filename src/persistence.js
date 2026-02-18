@@ -65,7 +65,9 @@ export function applyOfflineProgress({ state, elapsedMs, config = GAME_CONFIG })
     flowEssenceSpent = Math.min(state.resources.essence, maxSpend);
     state.resources.essence -= flowEssenceSpent;
 
-    distributeCultivationEssence({ state, essence: flowEssenceSpent, flowRates: normalizedFlow, config });
+    if (state.activityMode === 'cultivation' && !state.enemy) {
+      distributeCultivationEssence({ state, essence: flowEssenceSpent, flowRates: normalizedFlow, config });
+    }
     resolveLevelUps({ run: state.run, persistent: state.persistent, config, events: [] });
   }
 
@@ -83,9 +85,9 @@ function distributeCultivationEssence({ state, essence, flowRates, config }) {
   const mindEssence = essence * flowRates.mind;
   const spiritEssence = essence * flowRates.spirit;
 
-  state.run.bodyEssence += bodyEssence;
-  state.run.mindEssence += mindEssence;
-  state.run.spiritEssence += spiritEssence;
+  state.run.bodyEssence += toCultivationExp({ allocatedEssence: bodyEssence, prestigeLevel: state.run.bodyPrestigeLevel, config });
+  state.run.mindEssence += toCultivationExp({ allocatedEssence: mindEssence, prestigeLevel: state.run.mindPrestigeLevel, config });
+  state.run.spiritEssence += toCultivationExp({ allocatedEssence: spiritEssence, prestigeLevel: state.run.spiritPrestigeLevel, config });
 
   state.run.bodyPrestigeXp += toCultivationPrestigeXp({ essence: bodyEssence, config });
   state.run.mindPrestigeXp += toCultivationPrestigeXp({ essence: mindEssence, config });
@@ -95,6 +97,12 @@ function distributeCultivationEssence({ state, essence, flowRates, config }) {
 function toCultivationPrestigeXp({ essence, config }) {
   if (essence <= 0) return 0;
   return Math.max(1, Math.floor(essence * config.cultivation.cultivationPrestigeGain));
+}
+
+function toCultivationExp({ allocatedEssence, prestigeLevel, config }) {
+  if (allocatedEssence <= 0) return 0;
+  const multiplier = 1 + Math.max(0, prestigeLevel) * config.cultivation.essenceXpBoostPerPrestigeLevel;
+  return allocatedEssence * multiplier;
 }
 
 function getElapsedOfflineMs(savedAt) {

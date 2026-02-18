@@ -65,6 +65,7 @@ export const GAME_CONFIG = {
     bodyEssenceExp: 1.35,
     spiritEssenceBase: 52,
     spiritEssenceExp: 1.4,
+    essenceXpBoostPerPrestigeLevel: 0.08,
     cultivationPrestigeGain: 0.12,
     kiBaseRegenPerSecond: 0.01,
     kiMaxBase: 1,
