@@ -408,7 +408,18 @@ function consumeInterval({ timerMs, intervalMs }) {
 }
 
 function tickMovement({ state, dtMs, config, events }) {
-  if (state.activityMode === 'cultivation') return;
+  if (state.activityMode === 'cultivation' && !state.enemy) return;
+
+  if (state.activityMode === 'cultivation' && state.enemy) {
+    state.battlePositions.movementMs += dtMs;
+
+    while (consumeInterval({ timerMs: state.battlePositions.movementMs, intervalMs: config.combat.movementIntervalMs })) {
+      state.battlePositions.movementMs -= config.combat.movementIntervalMs;
+      advanceTowardsRange({ battlePositions: state.battlePositions, effectiveRangeHex: config.combat.effectiveRangeHex });
+    }
+
+    return;
+  }
 
   state.battlePositions.movementMs += dtMs;
 

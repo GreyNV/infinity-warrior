@@ -155,3 +155,8 @@
 - Updated `src/simulation.js` defeat reset flow so all prestige tracks persist (Strength/Endurance + Body/Mind/Spirit prestige levels and prestige XP) while only regular run levels reset.
 - Updated `src/main.js` cultivation tab copy to reflect the new rule: only regular levels reset on defeat.
 - Ran lightweight validation checks (`node --check` suite + targeted Node defeat-reset invariant script).
+2026-02-18 (cultivation-tab flow resume fix + scope docs refresh)
+- Checked `progress.txt` before starting this task and reviewed AGENTS workflow/role guidance.
+- Fixed `src/simulation.js` cultivation-mode movement deadlock: when switching to cultivation during an active encounter, movement now continues only for closing combat range (no exploration reveals), allowing the fight to resolve and Essence flow to begin afterward.
+- Updated `README.md` scope snapshot to reflect the implemented cultivation-switch behavior for active encounters.
+- Ran lightweight validation checks (`node --check` suite + targeted simulation smoke test for cultivation switch/combat resolution/essence spending).

@@ -14,6 +14,7 @@ The current playable slice is no longer the original floor-only clicker outline.
 5. Strength/Endurance gain run XP from combat actions, while prestige tracks gain reduced persistent XP.
 6. Defeat resets run stats/progress while preserving persistent progression and Essence.
 7. Cultivation unlocks Body/Mind/Spirit progression, converting Essence flow into regen, attack-speed, and Ki-cap growth.
+8. When switching to Cultivation during an active encounter, travel reveal pauses but combat movement still closes range so the encounter resolves and Essence flow can start.
 
 ## Agent Character Sheet (Operational Context)
 
