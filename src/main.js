@@ -22,12 +22,14 @@ const tabContentEl = document.getElementById('tab-content');
 const cultivationTabEl = document.getElementById('cultivation-tab');
 const offlineSummaryEl = document.getElementById('offline-summary');
 const navButtons = [...document.querySelectorAll('.tab-nav button')];
+const modeButtons = [...document.querySelectorAll('#activity-switch button')];
+const cultivationModeEl = document.getElementById('cultivation-mode');
 
 let state = createInitialSimulationState(GAME_CONFIG);
 const loadedGame = loadGame(GAME_CONFIG);
 state = loadedGame.state;
 let selectedTab = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'persistent';
-state.activityMode = selectedTab === 'cultivation' ? 'cultivation' : 'battle';
+state.activityMode = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'battle';
 let lastFrameMs = performance.now();
 let accumulator = 0;
 let autosaveMs = 0;
@@ -41,7 +43,17 @@ navButtons.forEach((button) => {
     if (target === 'cultivation' && !state.unlocks.cultivation) return;
 
     selectedTab = target;
-    state.activityMode = target === 'cultivation' ? 'cultivation' : 'battle';
+    syncNavState();
+    renderPanel();
+  });
+});
+
+modeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const target = button.dataset.mode;
+    if (target === 'cultivation' && !state.unlocks.cultivation) return;
+
+    state.activityMode = target;
     syncNavState();
     renderPanel();
   });
@@ -85,6 +97,7 @@ function frame(nowMs) {
 
 function syncNavState() {
   cultivationTabEl.disabled = !state.unlocks.cultivation;
+  cultivationModeEl.disabled = !state.unlocks.cultivation;
 
   if (!state.unlocks.cultivation && selectedTab === 'cultivation') {
     selectedTab = 'persistent';
@@ -93,6 +106,10 @@ function syncNavState() {
 
   for (const button of navButtons) {
     button.classList.toggle('active', button.dataset.tab === selectedTab);
+  }
+
+  for (const button of modeButtons) {
+    button.classList.toggle('active', button.dataset.mode === state.activityMode);
   }
 }
 
