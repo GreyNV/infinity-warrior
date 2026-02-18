@@ -150,3 +150,8 @@
 - Updated `src/main.js` side-panel rendering with run XP and prestige XP progress bars for Strength/Endurance plus a battle-tab combat badge showing active enemy rarity, biome, and HP.
 - Updated `index.html` styles for reusable progress-row/progress-track visuals and rarity/idle combat badge presentation.
 - Ran lightweight validation checks (`node --check` suite) and captured an updated UI screenshot artifact.
+2026-02-18 (defeat reset rule: prestige persists)
+- Checked `progress.txt` before starting this task and applied the requested reset behavior update.
+- Updated `src/simulation.js` defeat reset flow so all prestige tracks persist (Strength/Endurance + Body/Mind/Spirit prestige levels and prestige XP) while only regular run levels reset.
+- Updated `src/main.js` cultivation tab copy to reflect the new rule: only regular levels reset on defeat.
+- Ran lightweight validation checks (`node --check` suite + targeted Node defeat-reset invariant script).
