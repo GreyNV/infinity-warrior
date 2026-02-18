@@ -28,7 +28,8 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
       travelDepth: 0,
       revealedHexes: 0,
       pendingEncounters: 0,
-      moveDirectionIndex: 0
+      moveDirectionIndex: 0,
+      spawnMissStreak: 0
     },
     combatTimers: { playerMs: 0, enemyMs: 0 },
     battlePositions: createInitialBattlePositions(config),
@@ -157,6 +158,7 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   state.world.pendingEncounters = 0;
   state.world.revealedHexes = 0;
   state.world.moveDirectionIndex = 0;
+  state.world.spawnMissStreak = 0;
   state.run = createBaselineRunState();
   state.unlocks.cultivation = true;
 
@@ -338,19 +340,24 @@ function revealNextHex({ state, config, events }) {
   state.world.revealedHexes += 1;
   state.world.travelDepth = getHexDistance(state.battlePositions.playerHex, { q: 0, r: 0 });
 
-  const spawnChance = getSpawnChance({ travelDepth: state.world.travelDepth, config });
-  if (Math.random() > spawnChance) {
-    events.push({ type: 'revealHex', spawned: false, depth: state.world.travelDepth });
+  const spawnChance = getSpawnChance({ missStreak: state.world.spawnMissStreak, config });
+  const guaranteedSpawn = state.world.spawnMissStreak >= config.world.revealSpawnGuaranteeMisses;
+
+  if (!guaranteedSpawn && Math.random() > spawnChance) {
+    state.world.spawnMissStreak += 1;
+    events.push({ type: 'revealHex', spawned: false, depth: state.world.travelDepth, spawnChance });
     return;
   }
 
+  state.world.spawnMissStreak = 0;
+
   const additionalEncounters = getConsecutiveEncounterCount({ travelDepth: state.world.travelDepth, config });
   state.world.pendingEncounters = Math.max(0, additionalEncounters - 1);
-  spawnEncounterFromReveal({ state, config, events, reason: 'reveal' });
+  spawnEncounterFromReveal({ state, config, events, reason: guaranteedSpawn ? 'guarantee' : 'reveal' });
 }
 
-function getSpawnChance({ travelDepth, config }) {
-  const chance = config.world.revealSpawnChanceBase + travelDepth * config.world.revealSpawnChanceGrowthPerDepth;
+function getSpawnChance({ missStreak, config }) {
+  const chance = config.world.revealSpawnChanceBase + missStreak * config.world.revealSpawnChanceMissIncrement;
   return Math.max(0, Math.min(config.world.revealSpawnChanceCap, chance));
 }
 

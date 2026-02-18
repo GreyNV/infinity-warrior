@@ -41,11 +41,11 @@ export const GAME_CONFIG = {
       CrystalVerge: { hp: 1.02, attack: 1.08 }
     },
     rarityTiers: [
-      { key: 'common', chance: 0.53, hp: 1, attack: 1, color: '#9ca3af', label: 'Common' },
-      { key: 'uncommon', chance: 0.25, hp: 1.35, attack: 1.2, color: '#34d399', label: 'Uncommon' },
-      { key: 'rare', chance: 0.13, hp: 1.8, attack: 1.45, color: '#60a5fa', label: 'Rare' },
-      { key: 'epic', chance: 0.07, hp: 2.45, attack: 1.9, color: '#c084fc', label: 'Epic' },
-      { key: 'legendary', chance: 0.02, hp: 3.4, attack: 2.7, color: '#f59e0b', label: 'Legendary' }
+      { key: 'common', chance: 0.81, hp: 1, attack: 1, color: '#9ca3af', label: 'Common' },
+      { key: 'uncommon', chance: 0.10, hp: 1.35, attack: 1.2, color: '#34d399', label: 'Uncommon' },
+      { key: 'rare', chance: 0.05, hp: 1.8, attack: 1.45, color: '#60a5fa', label: 'Rare' },
+      { key: 'epic', chance: 0.03, hp: 2.45, attack: 1.9, color: '#c084fc', label: 'Epic' },
+      { key: 'legendary', chance: 0.01, hp: 3.4, attack: 2.7, color: '#f59e0b', label: 'Legendary' }
     ]
   },
   rewards: {
@@ -61,9 +61,10 @@ export const GAME_CONFIG = {
   },
   world: {
     biomeBandSize: 9,
-    revealSpawnChanceBase: 0.48,
-    revealSpawnChanceGrowthPerDepth: 0.0025,
-    revealSpawnChanceCap: 0.9,
+    revealSpawnChanceBase: 0.25,
+    revealSpawnChanceMissIncrement: 0.075,
+    revealSpawnChanceCap: 0.95,
+    revealSpawnGuaranteeMisses: 10,
     consecutiveEnemiesDepthStep: 12,
     consecutiveEnemiesBase: 1,
     biomes: [
