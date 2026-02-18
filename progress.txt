@@ -133,3 +133,8 @@
 - Extended `src/config.js` with persistence tuning constants for offline gain rates and offline flow efficiency.
 - Updated `README.md` wording to align cultivation terminology (Body/Mind/Spirit) and marked the persistence/offline immediate backlog item as completed.
 - Ran lightweight validation checks (`node --check` suite, Node offline-progression smoke test) and captured an updated screenshot showing the offline summary card.
+2026-02-18 (regen immortality fix)
+- Checked `progress.txt` before starting this bugfix and reviewed AGENTS workflow constraints.
+- Updated `src/simulation.js` tick order so encounter outcomes (victory/defeat) resolve immediately after combat, preventing HP regen from reviving a dead player in the same tick.
+- Added a defensive guard in cultivation processing to skip regen/flow logic when HP is already zero or below.
+- Ran lightweight validation checks (`node --check` suite + targeted smoke test) to confirm defeat now triggers correctly even with extreme regen values.
