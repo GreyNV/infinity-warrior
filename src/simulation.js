@@ -170,6 +170,15 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
 }
 
 export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
+  const cultivationPrestigeSnapshot = {
+    bodyLevel: state.run.bodyPrestigeLevel,
+    bodyXp: state.run.bodyPrestigeXp,
+    mindLevel: state.run.mindPrestigeLevel,
+    mindXp: state.run.mindPrestigeXp,
+    spiritLevel: state.run.spiritPrestigeLevel,
+    spiritXp: state.run.spiritPrestigeXp
+  };
+
   state.floor = 1;
   state.world.travelDepth = 0;
   state.world.pendingEncounters = 0;
@@ -177,6 +186,12 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   state.world.moveDirectionIndex = 0;
   state.world.spawnMissStreak = 0;
   state.run = createBaselineRunState();
+  state.run.bodyPrestigeLevel = cultivationPrestigeSnapshot.bodyLevel;
+  state.run.bodyPrestigeXp = cultivationPrestigeSnapshot.bodyXp;
+  state.run.mindPrestigeLevel = cultivationPrestigeSnapshot.mindLevel;
+  state.run.mindPrestigeXp = cultivationPrestigeSnapshot.mindXp;
+  state.run.spiritPrestigeLevel = cultivationPrestigeSnapshot.spiritLevel;
+  state.run.spiritPrestigeXp = cultivationPrestigeSnapshot.spiritXp;
   state.unlocks.cultivation = true;
 
   const playerStats = buildPlayerStats(state.run, state.persistent);

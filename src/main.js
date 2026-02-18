@@ -230,7 +230,7 @@ function renderCultivationTab() {
     <div class="mini-bar"><span style="width:${spiritRatio * 100}%"></span></div>
     <p>Ki regeneration starts at ${GAME_CONFIG.cultivation.kiBaseRegenPerSecond}/s and rises with Spirit.</p>
     <p>Cultivation prestige now increases conversion efficiency: each allocated Essence grants more cultivation EXP.</p>
-    <p>Cultivation levels + prestige reset on defeat as requested.</p>
+    <p>On defeat, only regular levels reset; all prestige levels persist.</p>
   `;
 
   bindFlowSlider('flow-body', 'body');
