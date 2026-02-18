@@ -11,6 +11,7 @@ import {
   simulateTick
 } from './simulation.js';
 import { createRenderer } from './render.js';
+import { loadGame, saveGame } from './persistence.js';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer({ canvas, config: GAME_CONFIG });
@@ -18,12 +19,18 @@ const renderer = createRenderer({ canvas, config: GAME_CONFIG });
 const coreStatsEl = document.getElementById('core-stats');
 const tabContentEl = document.getElementById('tab-content');
 const cultivationTabEl = document.getElementById('cultivation-tab');
+const offlineSummaryEl = document.getElementById('offline-summary');
 const navButtons = [...document.querySelectorAll('.tab-nav button')];
 
 let state = createInitialSimulationState(GAME_CONFIG);
+const loadedGame = loadGame(GAME_CONFIG);
+state = loadedGame.state;
 let selectedTab = 'battle';
 let lastFrameMs = performance.now();
 let accumulator = 0;
+let autosaveMs = 0;
+
+renderOfflineSummary(loadedGame.offlineReport);
 
 navButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -42,6 +49,7 @@ navButtons.forEach((button) => {
 syncNavState();
 renderPanel();
 requestAnimationFrame(frame);
+window.addEventListener('beforeunload', () => saveGame(state));
 
 function frame(nowMs) {
   const frameMs = Math.min(100, nowMs - lastFrameMs);
@@ -52,6 +60,12 @@ function frame(nowMs) {
     state = simulateTick(state, GAME_CONFIG.timing.simulationDtMs, GAME_CONFIG);
     renderer.ingestEvents(state.combatLog);
     accumulator -= GAME_CONFIG.timing.simulationDtMs;
+  }
+
+  autosaveMs += frameMs;
+  if (autosaveMs >= GAME_CONFIG.timing.autosaveMs) {
+    autosaveMs = 0;
+    saveGame(state);
   }
 
   renderer.render({
@@ -161,4 +175,17 @@ function bindFlowSlider(id, key) {
     const nextFlow = Number(slider.value) / 100;
     state.cultivation.flowRates[key] = nextFlow;
   });
+}
+
+function renderOfflineSummary(report) {
+  if (!report) {
+    offlineSummaryEl.innerHTML = '<span>No offline gains yet.</span>';
+    return;
+  }
+
+  const minutesAway = Math.floor(report.awaySeconds / 60);
+  offlineSummaryEl.innerHTML = `
+    <span>Away ${minutesAway}m · +${report.passiveEssenceGain} Essence</span>
+    <span>Flowed ${report.flowEssenceSpent} Essence into cultivation.</span>
+  `;
 }
