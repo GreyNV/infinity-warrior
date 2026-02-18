@@ -107,3 +107,8 @@
 - Updated `src/config.js` with configurable biome combat modifiers, rarity tiers, reveal-spawn probabilities, and depth-based consecutive encounter scaling constants.
 - Updated `src/render.js` and `src/main.js` panel copy/stats to reflect exploration depth, chain count, biome/rarity labeling, and no-target exploration state.
 - Ran lightweight validation checks (`node --check`, simulation smoke run). Attempted browser screenshot capture, but browser-container navigation to local server returned `ERR_EMPTY_RESPONSE` in this environment.
+2026-02-17 (spawn pity + rarity odds rebalance)
+- Checked `progress.txt` before starting this balancing task and followed AGENTS workflow constraints.
+- Updated `src/simulation.js` reveal encounter logic to use a pity-based spawn system: 25% base chance, chance increases by a per-miss margin, and spawn is guaranteed after 10 successive no-enemy moves; miss streak resets on spawn/reset.
+- Updated `src/config.js` world spawn tuning fields to configurable pity parameters and adjusted rarity odds to requested values (uncommon 10%, rare 5%, epic 3%, legendary 1%, common 81%).
+- Ran lightweight validation checks (`node --check` and a Node smoke test) to verify syntax and guaranteed spawn behavior.
