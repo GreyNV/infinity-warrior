@@ -67,5 +67,5 @@ This plan reflects current code reality and focuses on shipping a coherent MVP q
 
 ## Recommended Immediate Backlog (Next 3 Tasks)
 1. ✅ Implemented `saveGame/loadGame/applyOfflineProgress` module with schema versioning.
-2. Add progress bars + combat badges in UI for run XP/prestige XP/rarity visibility.
+2. ✅ Added progress bars + combat badges in UI for run XP/prestige XP/rarity visibility.
 3. Add first 3 Essence upgrades and wire purchase actions to simulation state.

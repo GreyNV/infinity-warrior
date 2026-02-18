@@ -144,3 +144,9 @@
 - Updated cultivation flow logic so Essence is only allocated while in cultivation mode and not during active combat encounters.
 - Added prestige-based Essence→cultivation EXP scaling (Body/Mind/Spirit) in `src/config.js`, `src/simulation.js`, and `src/persistence.js` so higher cultivation prestige makes each allocated Essence worth more EXP.
 - Ran lightweight validation checks (`node --check` suite + targeted Node smoke test) and captured an updated screenshot of the cultivation tab.
+2026-02-18 (next-step implementation: XP bars + combat rarity badge)
+- Checked `progress.txt` before starting this task and reviewed the current README MVP backlog.
+- Reviewed and adjusted the plan status in `README.md`: marked the UI readability backlog item (progress bars + combat badges) as completed.
+- Updated `src/main.js` side-panel rendering with run XP and prestige XP progress bars for Strength/Endurance plus a battle-tab combat badge showing active enemy rarity, biome, and HP.
+- Updated `index.html` styles for reusable progress-row/progress-track visuals and rarity/idle combat badge presentation.
+- Ran lightweight validation checks (`node --check` suite) and captured an updated UI screenshot artifact.
