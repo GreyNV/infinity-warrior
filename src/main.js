@@ -25,7 +25,8 @@ const navButtons = [...document.querySelectorAll('.tab-nav button')];
 let state = createInitialSimulationState(GAME_CONFIG);
 const loadedGame = loadGame(GAME_CONFIG);
 state = loadedGame.state;
-let selectedTab = 'battle';
+let selectedTab = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'battle';
+state.activityMode = selectedTab === 'cultivation' ? 'cultivation' : 'battle';
 let lastFrameMs = performance.now();
 let accumulator = 0;
 let autosaveMs = 0;
@@ -41,6 +42,7 @@ navButtons.forEach((button) => {
     }
 
     selectedTab = target;
+    state.activityMode = target === 'cultivation' ? 'cultivation' : 'battle';
     syncNavState();
     renderPanel();
   });
@@ -86,6 +88,7 @@ function syncNavState() {
 
   if (!state.unlocks.cultivation && selectedTab === 'cultivation') {
     selectedTab = 'battle';
+    state.activityMode = 'battle';
   }
 
   for (const button of navButtons) {
@@ -148,6 +151,7 @@ function renderCultivationTab() {
   tabContentEl.innerHTML = `
     <h3>🧘 Cultivation</h3>
     <p>Split Essence flow between Body (regen), Mind (attack speed), and Spirit (Ki capacity).</p>
+    <p>Switching to cultivation pauses travel; if battle is active, essence flow waits until combat ends.</p>
 
     <p>Body Lv ${state.run.bodyLevel} (P${state.run.bodyPrestigeLevel}) · Essence ${Math.floor(state.run.bodyEssence)} / ${bodyThreshold}</p>
     <input id="flow-body" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates.body * 100)}" />
@@ -161,6 +165,7 @@ function renderCultivationTab() {
     <input id="flow-spirit" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates.spirit * 100)}" />
     <div class="mini-bar"><span style="width:${spiritRatio * 100}%"></span></div>
     <p>Ki regeneration starts at ${GAME_CONFIG.cultivation.kiBaseRegenPerSecond}/s and rises with Spirit.</p>
+    <p>Cultivation prestige now increases conversion efficiency: each allocated Essence grants more cultivation EXP.</p>
     <p>Cultivation levels + prestige reset on defeat as requested.</p>
   `;
 

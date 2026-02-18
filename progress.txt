@@ -138,3 +138,9 @@
 - Updated `src/simulation.js` tick order so encounter outcomes (victory/defeat) resolve immediately after combat, preventing HP regen from reviving a dead player in the same tick.
 - Added a defensive guard in cultivation processing to skip regen/flow logic when HP is already zero or below.
 - Ran lightweight validation checks (`node --check` suite + targeted smoke test) to confirm defeat now triggers correctly even with extreme regen values.
+2026-02-18 (mode gating + cultivation prestige exp scaling)
+- Checked `progress.txt` before starting this task and implemented requested battle/cultivation behavior split.
+- Updated `src/simulation.js` + `src/main.js` with an explicit `activityMode` so switching to cultivation pauses travel exploration while battle/growth keeps travel active.
+- Updated cultivation flow logic so Essence is only allocated while in cultivation mode and not during active combat encounters.
+- Added prestige-based Essence→cultivation EXP scaling (Body/Mind/Spirit) in `src/config.js`, `src/simulation.js`, and `src/persistence.js` so higher cultivation prestige makes each allocated Essence worth more EXP.
+- Ran lightweight validation checks (`node --check` suite + targeted Node smoke test) and captured an updated screenshot of the cultivation tab.
