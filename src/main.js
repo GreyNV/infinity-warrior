@@ -7,6 +7,8 @@ import {
   getMaxKi,
   getMindAttackSpeedMultiplier,
   getMindEssenceThreshold,
+  getPrestigeXpThreshold,
+  getRunXpThreshold,
   getSpiritEssenceThreshold,
   simulateTick
 } from './simulation.js';
@@ -105,6 +107,32 @@ function renderPanel() {
   const speedRatio = Math.min(1, (mindMultiplier - 1) / (GAME_CONFIG.cultivation.maxAttackSpeedMultiplier - 1 || 1));
 
   const chainCount = state.enemy ? state.world.pendingEncounters + 1 : 0;
+  const strengthRunXp = renderProgressRow({
+    label: `STR XP ${Math.floor(state.run.strengthXp)} / ${getRunXpThreshold(state.run.strengthLevel, GAME_CONFIG)}`,
+    ratio: getProgressRatio(state.run.strengthXp, getRunXpThreshold(state.run.strengthLevel, GAME_CONFIG)),
+    tone: 'str'
+  });
+  const enduranceRunXp = renderProgressRow({
+    label: `END XP ${Math.floor(state.run.enduranceXp)} / ${getRunXpThreshold(state.run.enduranceLevel, GAME_CONFIG)}`,
+    ratio: getProgressRatio(state.run.enduranceXp, getRunXpThreshold(state.run.enduranceLevel, GAME_CONFIG)),
+    tone: 'end'
+  });
+  const strengthPrestigeXp = renderProgressRow({
+    label: `STR Prestige XP ${Math.floor(state.persistent.strengthPrestigeXp)} / ${getPrestigeXpThreshold(state.persistent.strengthPrestigeLevel, GAME_CONFIG)}`,
+    ratio: getProgressRatio(
+      state.persistent.strengthPrestigeXp,
+      getPrestigeXpThreshold(state.persistent.strengthPrestigeLevel, GAME_CONFIG)
+    ),
+    tone: 'prestige'
+  });
+  const endurancePrestigeXp = renderProgressRow({
+    label: `END Prestige XP ${Math.floor(state.persistent.endurancePrestigeXp)} / ${getPrestigeXpThreshold(state.persistent.endurancePrestigeLevel, GAME_CONFIG)}`,
+    ratio: getProgressRatio(
+      state.persistent.endurancePrestigeXp,
+      getPrestigeXpThreshold(state.persistent.endurancePrestigeLevel, GAME_CONFIG)
+    ),
+    tone: 'prestige'
+  });
 
   coreStatsEl.innerHTML = `
     <div class="stat-line">Floor ${state.floor} · Best ${state.bestFloor}</div>
@@ -115,15 +143,22 @@ function renderPanel() {
     <div class="stat-line">STR ${state.run.strengthLevel} (${state.persistent.strengthPrestigeLevel})</div>
     <div class="stat-line">END ${state.run.enduranceLevel} (${state.persistent.endurancePrestigeLevel})</div>
     <div class="stat-line">Mind ${state.run.mindLevel} (${state.run.mindPrestigeLevel}) · Speed x${mindMultiplier.toFixed(2)}</div>
+    ${strengthRunXp}
+    ${enduranceRunXp}
+    ${strengthPrestigeXp}
+    ${endurancePrestigeXp}
   `;
 
   document.getElementById('mind-speed-fill').style.width = `${speedRatio * 100}%`;
 
   if (selectedTab === 'battle') {
+    const combatBadge = renderCombatBadge(state.enemy);
+
     tabContentEl.innerHTML = `
       <h3>⚔️ Battle</h3>
       <p>You travel through hex biomes; revealed hexes can spawn enemy chains with rarity tiers.</p>
       <p>Enemy color matches biome, while rarity (common → legendary) boosts stats.</p>
+      ${combatBadge}
     `;
     return;
   }
@@ -138,6 +173,35 @@ function renderPanel() {
   }
 
   renderCultivationTab();
+}
+
+function getProgressRatio(current, threshold) {
+  return Math.max(0, Math.min(1, current / Math.max(1, threshold)));
+}
+
+function renderProgressRow({ label, ratio, tone }) {
+  return `
+    <div class="progress-row">
+      <div class="progress-label">${label}</div>
+      <div class="progress-track ${tone}"><span style="width:${(ratio * 100).toFixed(1)}%"></span></div>
+    </div>
+  `;
+}
+
+function renderCombatBadge(enemy) {
+  if (!enemy) {
+    return '<p class="combat-badge idle">No active encounter. Continue exploring for the next spawn.</p>';
+  }
+
+  const rarityColor = enemy.rarity?.color ?? '#9ca3af';
+  const rarityLabel = enemy.rarity?.label ?? 'Unknown';
+  const biomeLabel = enemy.biome?.name ?? 'Uncharted';
+
+  return `
+    <p class="combat-badge" style="border-color:${rarityColor};color:${rarityColor};">
+      ${rarityLabel} · ${biomeLabel} · HP ${Math.floor(enemy.hp)} / ${Math.floor(enemy.maxHp)}
+    </p>
+  `;
 }
 
 function renderCultivationTab() {
