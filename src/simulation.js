@@ -45,9 +45,9 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
 
   tickMovement({ state: next, dtMs, config, events });
   tickCombatIntervals({ state: next, dtMs, playerStats, config, events });
+  resolveEncounterOutcome({ state: next, config, events });
   processCultivationFlow({ state: next, dtMs, config });
   resolveLevelUps({ run: next.run, persistent: next.persistent, config, events });
-  resolveEncounterOutcome({ state: next, config, events });
 
   return buildTickResult(next, dtMs, events);
 }
@@ -343,6 +343,8 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
 }
 
 function processCultivationFlow({ state, dtMs, config }) {
+  if (state.run.hp <= 0) return;
+
   const regenHp = getHpRegenPerSecond(state.run, config) * (dtMs / 1000);
   const maxHp = getMaxHp(buildPlayerStats(state.run, state.persistent), config);
   state.run.hp = Math.min(maxHp, state.run.hp + regenHp);
