@@ -13,7 +13,7 @@ The current playable slice is no longer the original floor-only clicker outline.
 4. Combat resolves in deterministic simulation ticks (movement, attack intervals, damage exchange).
 5. Strength/Endurance gain run XP from combat actions, while prestige tracks gain reduced persistent XP.
 6. Defeat resets run stats/progress while preserving persistent progression and Essence.
-7. Cultivation unlocks Agility progression, converting Essence flow into attack-speed scaling.
+7. Cultivation unlocks Body/Mind/Spirit progression, converting Essence flow into regen, attack-speed, and Ki-cap growth.
 
 ## Agent Character Sheet (Operational Context)
 
@@ -42,8 +42,8 @@ This plan reflects current code reality and focuses on shipping a coherent MVP q
 - Why: persistence is mandatory for incremental retention and practical playtesting.
 
 ### 3) Lock the HUD for Readability
-- Keep one always-visible compact panel: floor/best, depth, chain, essence, STR/END/AGI.
-- Add explicit progress bars for run XP, prestige XP, and agility essence thresholds.
+- Keep one always-visible compact panel: floor/best, depth, chain, essence, STR/END/Mind/Body/Spirit.
+- Add explicit progress bars for run XP, prestige XP, and cultivation essence thresholds.
 - Surface biome + rarity as color-coded badges during encounters.
 - Why: clarity improves player motivation and makes balance tuning measurable.
 
@@ -61,11 +61,11 @@ This plan reflects current code reality and focuses on shipping a coherent MVP q
 
 ### 6) Ship MVP Balance Pass
 - Run repeated 5–10 minute loops.
-- Tune spawn pity, rarity weights, XP curves, prestige gain, and agility scaling.
+- Tune spawn pity, rarity weights, XP curves, prestige gain, and cultivation scaling.
 - Capture a short tuning changelog with before/after constants.
 - Why: MVP success depends on momentum and avoiding progression dead zones.
 
 ## Recommended Immediate Backlog (Next 3 Tasks)
-1. Implement `saveGame/loadGame/applyOfflineProgress` module with schema versioning.
+1. ✅ Implemented `saveGame/loadGame/applyOfflineProgress` module with schema versioning.
 2. Add progress bars + combat badges in UI for run XP/prestige XP/rarity visibility.
 3. Add first 3 Essence upgrades and wire purchase actions to simulation state.

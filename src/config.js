@@ -71,6 +71,12 @@ export const GAME_CONFIG = {
     kiMaxPerSpiritLevel: 1,
     kiMaxPerSpiritPrestigeLevel: 0.5
   },
+  persistence: {
+    offlineEssencePerSecondBase: 0.15,
+    offlineEssencePerBestFloor: 0.02,
+    offlineEssencePerPrestigeLevel: 0.01,
+    offlineFlowEfficiency: 0.8
+  },
   world: {
     biomeBandSize: 9,
     revealSpawnChanceBase: 0.25,

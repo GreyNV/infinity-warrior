@@ -125,3 +125,11 @@
 - Expanded `src/config.js` cultivation tuning constants for body/mind/spirit thresholds, regen coefficients, ki caps, and cultivation prestige gain.
 - Updated `src/main.js` + `index.html` UI text/labels to reflect Mind replacing Agility, new Body/Mind/Spirit allocation sliders, Ki display, and switched cultivation nav emoji from leaf to meditation.
 - Ran lightweight validation checks (`node --check` suite + simulation smoke assertions) and captured an updated UI screenshot artifact.
+2026-02-18 (next-step implementation: save/load + offline progression)
+- Checked `progress.txt` before starting this task and reviewed AGENTS character-sheet constraints.
+- Added `src/persistence.js` with versioned localStorage save/load, state hydration against current schema defaults, and capped offline progression (`applyOfflineProgress`) that grants passive Essence plus cultivation flow spending while away.
+- Updated `src/main.js` to load from save on startup, apply/render an offline summary panel, autosave on an interval, and save on `beforeunload`.
+- Updated `index.html` to include a compact offline-summary UI card in the side panel and styling for legible gain reporting.
+- Extended `src/config.js` with persistence tuning constants for offline gain rates and offline flow efficiency.
+- Updated `README.md` wording to align cultivation terminology (Body/Mind/Spirit) and marked the persistence/offline immediate backlog item as completed.
+- Ran lightweight validation checks (`node --check` suite, Node offline-progression smoke test) and captured an updated screenshot showing the offline summary card.

@@ -64,7 +64,7 @@
         background: #111827;
         padding: 14px;
         display: grid;
-        grid-template-rows: auto auto 1fr;
+        grid-template-rows: auto auto auto 1fr;
         gap: 12px;
         min-height: min(620px, 86vh);
       }
@@ -85,6 +85,16 @@
         height: 100%;
         background: #60a5fa;
       }
+      .offline-summary {
+        border: 1px solid #2b3850;
+        border-radius: 8px;
+        background: #121d30;
+        color: #9fb4d4;
+        font-size: 12px;
+        padding: 8px;
+        display: grid;
+        gap: 4px;
+      }
     </style>
   </head>
   <body>
@@ -104,6 +114,7 @@
           <div id="core-stats"></div>
         </div>
         <div class="mini-bar"><span id="mind-speed-fill" style="width:0%"></span></div>
+        <div id="offline-summary" class="offline-summary"><span>No offline gains yet.</span></div>
         <div id="tab-content" class="tab-content"></div>
       </aside>
     </div>
