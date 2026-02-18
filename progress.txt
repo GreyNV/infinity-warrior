@@ -112,3 +112,16 @@
 - Updated `src/simulation.js` reveal encounter logic to use a pity-based spawn system: 25% base chance, chance increases by a per-miss margin, and spawn is guaranteed after 10 successive no-enemy moves; miss streak resets on spawn/reset.
 - Updated `src/config.js` world spawn tuning fields to configurable pity parameters and adjusted rarity odds to requested values (uncommon 10%, rare 5%, epic 3%, legendary 1%, common 81%).
 - Ran lightweight validation checks (`node --check` and a Node smoke test) to verify syntax and guaranteed spawn behavior.
+2026-02-18 (scope review + MVP replanning)
+- Checked `progress.txt` before starting this task and reviewed current README/simulation scope alignment.
+- Rewrote `README.md` to match the implemented game loop (hex exploration, pity spawns, biome/rarity encounters, run/persistent growth, cultivation).
+- Added a scope-aligned new MVP plan with six concrete phases plus an immediate 3-task backlog.
+- Added an "Agent Character Sheet" operational section in README that mirrors the key AGENTS.md role/style/stack/workflow constraints for faster handoff context.
+2026-02-18 (cultivation overhaul: body/mind/spirit + regen/ki)
+- Checked `progress.txt` before starting this task and applied requested cultivation redesign from review comments.
+- Replaced single Agility cultivation with three run-reset cultivation tracks in `src/simulation.js`: Body (HP regen), Mind (attack speed), Spirit (Ki capacity + regen support), each with its own essence threshold, prestige XP, and level-up events.
+- Updated defeat flow in `src/simulation.js` so cultivation levels and cultivation prestige levels reset on defeat as requested.
+- Updated victory behavior in `src/simulation.js` to stop full HP restore; HP now recovers over time via base regen (plus Body scaling), and Ki passively regenerates from a base 0.01/s.
+- Expanded `src/config.js` cultivation tuning constants for body/mind/spirit thresholds, regen coefficients, ki caps, and cultivation prestige gain.
+- Updated `src/main.js` + `index.html` UI text/labels to reflect Mind replacing Agility, new Body/Mind/Spirit allocation sliders, Ki display, and switched cultivation nav emoji from leaf to meditation.
+- Ran lightweight validation checks (`node --check` suite + simulation smoke assertions) and captured an updated UI screenshot artifact.

@@ -2,8 +2,12 @@ import { GAME_CONFIG } from './config.js';
 import {
   buildPlayerStats,
   createInitialSimulationState,
-  getAgilityAttackSpeedMultiplier,
-  getAgilityEssenceThreshold,
+  getBodyEssenceThreshold,
+  getHpRegenPerSecond,
+  getMaxKi,
+  getMindAttackSpeedMultiplier,
+  getMindEssenceThreshold,
+  getSpiritEssenceThreshold,
   simulateTick
 } from './simulation.js';
 import { createRenderer } from './render.js';
@@ -76,8 +80,12 @@ function syncNavState() {
 }
 
 function renderPanel() {
-  const agilityMultiplier = getAgilityAttackSpeedMultiplier({ agilityLevel: state.persistent.agilityLevel, config: GAME_CONFIG });
-  const speedRatio = Math.min(1, (agilityMultiplier - 1) / (GAME_CONFIG.cultivation.maxAttackSpeedMultiplier - 1 || 1));
+  const mindMultiplier = getMindAttackSpeedMultiplier({
+    mindLevel: state.run.mindLevel,
+    mindPrestigeLevel: state.run.mindPrestigeLevel,
+    config: GAME_CONFIG
+  });
+  const speedRatio = Math.min(1, (mindMultiplier - 1) / (GAME_CONFIG.cultivation.maxAttackSpeedMultiplier - 1 || 1));
 
   const chainCount = state.enemy ? state.world.pendingEncounters + 1 : 0;
 
@@ -85,12 +93,14 @@ function renderPanel() {
     <div class="stat-line">Floor ${state.floor} · Best ${state.bestFloor}</div>
     <div class="stat-line">Depth ${state.world.travelDepth} · Chain ${chainCount}</div>
     <div class="stat-line">Essence ${Math.floor(state.resources.essence)}</div>
+    <div class="stat-line">HP ${Math.floor(state.run.hp)} · Regen ${getHpRegenPerSecond(state.run, GAME_CONFIG).toFixed(2)}/s</div>
+    <div class="stat-line">Ki ${state.run.ki.toFixed(2)} / ${getMaxKi(state.run, GAME_CONFIG).toFixed(1)}</div>
     <div class="stat-line">STR ${state.run.strengthLevel} (${state.persistent.strengthPrestigeLevel})</div>
     <div class="stat-line">END ${state.run.enduranceLevel} (${state.persistent.endurancePrestigeLevel})</div>
-    <div class="stat-line">AGI ${state.persistent.agilityLevel} · Speed x${agilityMultiplier.toFixed(2)}</div>
+    <div class="stat-line">Mind ${state.run.mindLevel} (${state.run.mindPrestigeLevel}) · Speed x${mindMultiplier.toFixed(2)}</div>
   `;
 
-  document.getElementById('agility-speed-fill').style.width = `${speedRatio * 100}%`;
+  document.getElementById('mind-speed-fill').style.width = `${speedRatio * 100}%`;
 
   if (selectedTab === 'battle') {
     tabContentEl.innerHTML = `
@@ -114,25 +124,41 @@ function renderPanel() {
 }
 
 function renderCultivationTab() {
-  const threshold = getAgilityEssenceThreshold(state.persistent.agilityLevel, GAME_CONFIG);
-  const ratio = Math.max(0, Math.min(1, state.persistent.agilityEssence / Math.max(1, threshold)));
+  const bodyThreshold = getBodyEssenceThreshold(state.run.bodyLevel, GAME_CONFIG);
+  const mindThreshold = getMindEssenceThreshold(state.run.mindLevel, GAME_CONFIG);
+  const spiritThreshold = getSpiritEssenceThreshold(state.run.spiritLevel, GAME_CONFIG);
+  const bodyRatio = Math.max(0, Math.min(1, state.run.bodyEssence / Math.max(1, bodyThreshold)));
+  const mindRatio = Math.max(0, Math.min(1, state.run.mindEssence / Math.max(1, mindThreshold)));
+  const spiritRatio = Math.max(0, Math.min(1, state.run.spiritEssence / Math.max(1, spiritThreshold)));
 
   tabContentEl.innerHTML = `
-    <h3>🌿 Cultivation</h3>
-    <p>Move the flow slider to continuously channel Essence into Agility (no tap-spam).</p>
-    <p>Flow: <strong id="flow-value">${Math.round(state.cultivation.flowRate * 100)}%</strong></p>
-    <input id="flow-slider" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRate * 100)}" />
-    <p>Agility Essence: ${Math.floor(state.persistent.agilityEssence)} / ${threshold}</p>
-    <div class="mini-bar"><span style="width:${ratio * 100}%"></span></div>
-    <p>Each Agility level increases attack speed with a logarithmic bonus.</p>
+    <h3>🧘 Cultivation</h3>
+    <p>Split Essence flow between Body (regen), Mind (attack speed), and Spirit (Ki capacity).</p>
+
+    <p>Body Lv ${state.run.bodyLevel} (P${state.run.bodyPrestigeLevel}) · Essence ${Math.floor(state.run.bodyEssence)} / ${bodyThreshold}</p>
+    <input id="flow-body" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates.body * 100)}" />
+    <div class="mini-bar"><span style="width:${bodyRatio * 100}%"></span></div>
+
+    <p>Mind Lv ${state.run.mindLevel} (P${state.run.mindPrestigeLevel}) · Essence ${Math.floor(state.run.mindEssence)} / ${mindThreshold}</p>
+    <input id="flow-mind" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates.mind * 100)}" />
+    <div class="mini-bar"><span style="width:${mindRatio * 100}%"></span></div>
+
+    <p>Spirit Lv ${state.run.spiritLevel} (P${state.run.spiritPrestigeLevel}) · Essence ${Math.floor(state.run.spiritEssence)} / ${spiritThreshold}</p>
+    <input id="flow-spirit" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates.spirit * 100)}" />
+    <div class="mini-bar"><span style="width:${spiritRatio * 100}%"></span></div>
+    <p>Ki regeneration starts at ${GAME_CONFIG.cultivation.kiBaseRegenPerSecond}/s and rises with Spirit.</p>
+    <p>Cultivation levels + prestige reset on defeat as requested.</p>
   `;
 
-  const slider = document.getElementById('flow-slider');
-  const flowValue = document.getElementById('flow-value');
+  bindFlowSlider('flow-body', 'body');
+  bindFlowSlider('flow-mind', 'mind');
+  bindFlowSlider('flow-spirit', 'spirit');
+}
 
+function bindFlowSlider(id, key) {
+  const slider = document.getElementById(id);
   slider.addEventListener('input', () => {
     const nextFlow = Number(slider.value) / 100;
-    state.cultivation.flowRate = nextFlow;
-    flowValue.textContent = `${Math.round(nextFlow * 100)}%`;
+    state.cultivation.flowRates[key] = nextFlow;
   });
 }

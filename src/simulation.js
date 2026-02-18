@@ -23,7 +23,7 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
     unlocks: { cultivation: false },
     run,
     persistent,
-    cultivation: { flowRate: 0 },
+    cultivation: { flowRates: { body: 0.34, mind: 0.33, spirit: 0.33 } },
     world: {
       travelDepth: 0,
       revealedHexes: 0,
@@ -82,7 +82,20 @@ export function createBaselineRunState() {
     strengthXp: 0,
     enduranceLevel: 1,
     enduranceXp: 0,
-    hp: 0
+    hp: 0,
+    bodyLevel: 0,
+    bodyEssence: 0,
+    bodyPrestigeLevel: 0,
+    bodyPrestigeXp: 0,
+    mindLevel: 0,
+    mindEssence: 0,
+    mindPrestigeLevel: 0,
+    mindPrestigeXp: 0,
+    spiritLevel: 0,
+    spiritEssence: 0,
+    spiritPrestigeLevel: 0,
+    spiritPrestigeXp: 0,
+    ki: 0
   };
 }
 
@@ -91,9 +104,7 @@ export function createBaselinePersistentState() {
     strengthPrestigeLevel: 0,
     strengthPrestigeXp: 0,
     endurancePrestigeLevel: 0,
-    endurancePrestigeXp: 0,
-    agilityLevel: 0,
-    agilityEssence: 0
+    endurancePrestigeXp: 0
   };
 }
 
@@ -123,7 +134,12 @@ export function resolveLevelUps({ run, persistent, config = GAME_CONFIG, events 
   processEnduranceRunLevelUps({ run, config, events });
   processStrengthPrestigeLevelUps({ persistent, config, events });
   processEndurancePrestigeLevelUps({ persistent, config, events });
-  processAgilityCultivationLevelUps({ persistent, config, events });
+  processBodyCultivationLevelUps({ run, config, events });
+  processBodyCultivationPrestigeLevelUps({ run, config, events });
+  processMindCultivationLevelUps({ run, config, events });
+  processMindCultivationPrestigeLevelUps({ run, config, events });
+  processSpiritCultivationLevelUps({ run, config, events });
+  processSpiritCultivationPrestigeLevelUps({ run, config, events });
 
   const playerStats = buildPlayerStats(run, persistent);
   run.hp = Math.min(run.hp, getMaxHp(playerStats, config));
@@ -148,7 +164,7 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   }
 
   const playerStats = buildPlayerStats(state.run, state.persistent);
-  state.run.hp = getMaxHp(playerStats, config);
+  state.run.hp = Math.min(getMaxHp(playerStats, config), state.run.hp + getHpRegenPerSecond(state.run, config));
   events.push({ type: 'victory', reward, nextFloor: state.floor });
 }
 
@@ -227,12 +243,39 @@ export function computeEnduranceXpGain(damageTaken, playerStats, config = GAME_C
 }
 
 export function getAgilityEssenceThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.cultivation.agilityEssenceBase * Math.pow(level + 1, config.cultivation.agilityEssenceExp));
+  return getMindEssenceThreshold(level, config);
 }
 
 export function getAgilityAttackSpeedMultiplier({ agilityLevel, config = GAME_CONFIG }) {
-  const rawMultiplier = 1 + Math.log1p(Math.max(0, agilityLevel)) * config.cultivation.agilitySpeedLogFactor;
+  return getMindAttackSpeedMultiplier({ mindLevel: agilityLevel, mindPrestigeLevel: 0, config });
+}
+
+export function getBodyEssenceThreshold(level, config = GAME_CONFIG) {
+  return Math.floor(config.cultivation.bodyEssenceBase * Math.pow(level + 1, config.cultivation.bodyEssenceExp));
+}
+
+export function getMindEssenceThreshold(level, config = GAME_CONFIG) {
+  return Math.floor(config.cultivation.mindEssenceBase * Math.pow(level + 1, config.cultivation.mindEssenceExp));
+}
+
+export function getSpiritEssenceThreshold(level, config = GAME_CONFIG) {
+  return Math.floor(config.cultivation.spiritEssenceBase * Math.pow(level + 1, config.cultivation.spiritEssenceExp));
+}
+
+export function getMindAttackSpeedMultiplier({ mindLevel, mindPrestigeLevel = 0, config = GAME_CONFIG }) {
+  const totalMindLevel = Math.max(0, mindLevel + mindPrestigeLevel);
+  const rawMultiplier = 1 + Math.log1p(totalMindLevel) * config.cultivation.mindSpeedLogFactor;
   return Math.min(config.cultivation.maxAttackSpeedMultiplier, rawMultiplier);
+}
+
+export function getHpRegenPerSecond(run, config = GAME_CONFIG) {
+  const { hpRegenBasePerSecond, hpRegenPerBodyLevel, hpRegenPerBodyPrestigeLevel } = config.cultivation;
+  return hpRegenBasePerSecond + run.bodyLevel * hpRegenPerBodyLevel + run.bodyPrestigeLevel * hpRegenPerBodyPrestigeLevel;
+}
+
+export function getMaxKi(run, config = GAME_CONFIG) {
+  const { kiMaxBase, kiMaxPerSpiritLevel, kiMaxPerSpiritPrestigeLevel } = config.cultivation;
+  return kiMaxBase + run.spiritLevel * kiMaxPerSpiritLevel + run.spiritPrestigeLevel * kiMaxPerSpiritPrestigeLevel;
 }
 
 function buildTickResult(state, dtMs, events) {
@@ -279,8 +322,12 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
   state.combatTimers.playerMs += dtMs;
   state.combatTimers.enemyMs += dtMs;
 
-  const agilityMultiplier = getAgilityAttackSpeedMultiplier({ agilityLevel: state.persistent.agilityLevel, config });
-  const playerIntervalMs = Math.max(config.combat.minAttackIntervalMs, config.combat.playerAttackIntervalMs / agilityMultiplier);
+  const mindMultiplier = getMindAttackSpeedMultiplier({
+    mindLevel: state.run.mindLevel,
+    mindPrestigeLevel: state.run.mindPrestigeLevel,
+    config
+  });
+  const playerIntervalMs = Math.max(config.combat.minAttackIntervalMs, config.combat.playerAttackIntervalMs / mindMultiplier);
 
   if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: playerIntervalMs })) {
     state.combatTimers.playerMs -= playerIntervalMs;
@@ -296,14 +343,46 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
 }
 
 function processCultivationFlow({ state, dtMs, config }) {
+  const regenHp = getHpRegenPerSecond(state.run, config) * (dtMs / 1000);
+  const maxHp = getMaxHp(buildPlayerStats(state.run, state.persistent), config);
+  state.run.hp = Math.min(maxHp, state.run.hp + regenHp);
+
+  const maxKi = getMaxKi(state.run, config);
+  const kiRegen = (config.cultivation.kiBaseRegenPerSecond + state.run.spiritLevel * 0.002) * (dtMs / 1000);
+  state.run.ki = Math.min(maxKi, state.run.ki + kiRegen);
+
   if (!state.unlocks.cultivation) return;
 
-  const boundedFlowRate = Math.max(0, Math.min(1, state.cultivation.flowRate));
-  const requestedEssence = (dtMs / 1000) * config.cultivation.maxFlowEssencePerSecond * boundedFlowRate;
-  const spentEssence = Math.min(state.resources.essence, requestedEssence);
-
+  const flowRates = normalizeFlowRates(state.cultivation.flowRates);
+  state.cultivation.flowRates = flowRates;
+  const totalRequestedEssence = (dtMs / 1000) * config.cultivation.maxFlowEssencePerSecond;
+  const spentEssence = Math.min(state.resources.essence, totalRequestedEssence);
   state.resources.essence -= spentEssence;
-  state.persistent.agilityEssence += spentEssence;
+
+  const bodyEssence = spentEssence * flowRates.body;
+  const mindEssence = spentEssence * flowRates.mind;
+  const spiritEssence = spentEssence * flowRates.spirit;
+
+  state.run.bodyEssence += bodyEssence;
+  state.run.mindEssence += mindEssence;
+  state.run.spiritEssence += spiritEssence;
+  state.run.bodyPrestigeXp += computePrestigeXpGain({ runXpGain: bodyEssence, gainRate: config.cultivation.cultivationPrestigeGain });
+  state.run.mindPrestigeXp += computePrestigeXpGain({ runXpGain: mindEssence, gainRate: config.cultivation.cultivationPrestigeGain });
+  state.run.spiritPrestigeXp += computePrestigeXpGain({ runXpGain: spiritEssence, gainRate: config.cultivation.cultivationPrestigeGain });
+}
+
+function normalizeFlowRates(flowRates = {}) {
+  const body = Math.max(0, Number(flowRates.body) || 0);
+  const mind = Math.max(0, Number(flowRates.mind) || 0);
+  const spirit = Math.max(0, Number(flowRates.spirit) || 0);
+  const total = body + mind + spirit;
+  if (total <= 0) return { body: 1 / 3, mind: 1 / 3, spirit: 1 / 3 };
+
+  return {
+    body: body / total,
+    mind: mind / total,
+    spirit: spirit / total
+  };
 }
 
 function consumeInterval({ timerMs, intervalMs }) {
@@ -493,12 +572,57 @@ function processEndurancePrestigeLevelUps({ persistent, config, events }) {
   }
 }
 
-function processAgilityCultivationLevelUps({ persistent, config, events }) {
-  while (persistent.agilityEssence >= getAgilityEssenceThreshold(persistent.agilityLevel, config)) {
-    const requiredEssence = getAgilityEssenceThreshold(persistent.agilityLevel, config);
-    persistent.agilityEssence -= requiredEssence;
-    persistent.agilityLevel += 1;
-    events.push({ type: 'agilityLevelUp', level: persistent.agilityLevel });
+function processBodyCultivationLevelUps({ run, config, events }) {
+  while (run.bodyEssence >= getBodyEssenceThreshold(run.bodyLevel, config)) {
+    const requiredEssence = getBodyEssenceThreshold(run.bodyLevel, config);
+    run.bodyEssence -= requiredEssence;
+    run.bodyLevel += 1;
+    events.push({ type: 'bodyLevelUp', level: run.bodyLevel });
+  }
+}
+
+function processMindCultivationLevelUps({ run, config, events }) {
+  while (run.mindEssence >= getMindEssenceThreshold(run.mindLevel, config)) {
+    const requiredEssence = getMindEssenceThreshold(run.mindLevel, config);
+    run.mindEssence -= requiredEssence;
+    run.mindLevel += 1;
+    events.push({ type: 'mindLevelUp', level: run.mindLevel });
+  }
+}
+
+function processSpiritCultivationLevelUps({ run, config, events }) {
+  while (run.spiritEssence >= getSpiritEssenceThreshold(run.spiritLevel, config)) {
+    const requiredEssence = getSpiritEssenceThreshold(run.spiritLevel, config);
+    run.spiritEssence -= requiredEssence;
+    run.spiritLevel += 1;
+    events.push({ type: 'spiritLevelUp', level: run.spiritLevel });
+  }
+}
+
+function processBodyCultivationPrestigeLevelUps({ run, config, events }) {
+  while (run.bodyPrestigeXp >= getPrestigeXpThreshold(run.bodyPrestigeLevel, config)) {
+    const requiredXp = getPrestigeXpThreshold(run.bodyPrestigeLevel, config);
+    run.bodyPrestigeXp -= requiredXp;
+    run.bodyPrestigeLevel += 1;
+    events.push({ type: 'bodyPrestigeLevelUp', level: run.bodyPrestigeLevel });
+  }
+}
+
+function processMindCultivationPrestigeLevelUps({ run, config, events }) {
+  while (run.mindPrestigeXp >= getPrestigeXpThreshold(run.mindPrestigeLevel, config)) {
+    const requiredXp = getPrestigeXpThreshold(run.mindPrestigeLevel, config);
+    run.mindPrestigeXp -= requiredXp;
+    run.mindPrestigeLevel += 1;
+    events.push({ type: 'mindPrestigeLevelUp', level: run.mindPrestigeLevel });
+  }
+}
+
+function processSpiritCultivationPrestigeLevelUps({ run, config, events }) {
+  while (run.spiritPrestigeXp >= getPrestigeXpThreshold(run.spiritPrestigeLevel, config)) {
+    const requiredXp = getPrestigeXpThreshold(run.spiritPrestigeLevel, config);
+    run.spiritPrestigeXp -= requiredXp;
+    run.spiritPrestigeLevel += 1;
+    events.push({ type: 'spiritPrestigeLevelUp', level: run.spiritPrestigeLevel });
   }
 }
 

@@ -54,10 +54,22 @@ export const GAME_CONFIG = {
   },
   cultivation: {
     maxFlowEssencePerSecond: 18,
-    agilityEssenceBase: 40,
-    agilityEssenceExp: 1.38,
-    agilitySpeedLogFactor: 0.26,
-    maxAttackSpeedMultiplier: 3
+    hpRegenBasePerSecond: 0.8,
+    hpRegenPerBodyLevel: 0.22,
+    hpRegenPerBodyPrestigeLevel: 0.08,
+    mindEssenceBase: 40,
+    mindEssenceExp: 1.38,
+    mindSpeedLogFactor: 0.26,
+    maxAttackSpeedMultiplier: 3,
+    bodyEssenceBase: 36,
+    bodyEssenceExp: 1.35,
+    spiritEssenceBase: 52,
+    spiritEssenceExp: 1.4,
+    cultivationPrestigeGain: 0.12,
+    kiBaseRegenPerSecond: 0.01,
+    kiMaxBase: 1,
+    kiMaxPerSpiritLevel: 1,
+    kiMaxPerSpiritPrestigeLevel: 0.5
   },
   world: {
     biomeBandSize: 9,
