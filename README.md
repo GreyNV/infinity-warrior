@@ -1,65 +1,71 @@
 # Infinity Warrior
 
-## Ordered Next Steps (Execution Plan)
+A minimalist browser incremental game prototype built with vanilla JavaScript + Canvas.
 
-1. **Create the configurable simulation core (combat + progression formulas).**
-   - Build a `config` object for enemy scaling, XP curves, prestige gain, and timing constants.
-   - Implement deterministic tick-based combat functions (no rendering dependency).
-   - Why first: all balance, progression, and later UI depend on stable simulation outputs.
+## Current Scope (As Implemented)
 
-2. **Implement state model + reset logic for run vs persistent progression.**
-   - Add explicit state slices for run stats (STR/END levels + XP), persistent prestige tracks, essence, floor, and record.
-   - Implement victory flow and defeat-reset flow (reset run stats to baseline, retain essence + prestige).
-   - Why second: this is the core identity loop and must be correct before interface work.
+The current playable slice is no longer the original floor-only clicker outline. It now centers on **hex-travel encounters**, short combat chains, and persistent growth loops.
 
-3. **Add level-up and prestige progression handlers.**
-   - Process Strength XP from damage dealt and Endurance XP from damage taken.
-   - Process reduced-gain prestige XP for both attributes and resolve threshold-based level-ups.
-   - Why third: this creates the short-term and long-term rewards that drive retention.
+### Gameplay Loop Snapshot
+1. The player auto-travels through hex directions and reveals new tiles.
+2. Reveals use a pity-based spawn system to generate encounters (guaranteed after enough misses).
+3. Enemies inherit biome theme + rarity tier, which modify stats and visual identity.
+4. Combat resolves in deterministic simulation ticks (movement, attack intervals, damage exchange).
+5. Strength/Endurance gain run XP from combat actions, while prestige tracks gain reduced persistent XP.
+6. Defeat resets run stats/progress while preserving persistent progression and Essence.
+7. Cultivation unlocks Agility progression, converting Essence flow into attack-speed scaling.
 
-4. **Build a minimal Canvas combat view with readable feedback.**
-   - Draw geometric entities (player circle, enemy square), HP bars, hit flashes, and damage/XP popups.
-   - Set a shared baseline attack range for player and enemy (same initial value) and trigger hit visuals only once units are visibly within that range.
-   - Reduce default player/enemy render sizes so combat space can support multiple simultaneous enemies in future updates.
-   - Keep rendering as a consumer of simulation state only.
-   - Why fourth: visual clarity validates the loop quickly without blocking on advanced art/UI.
+## Agent Character Sheet (Operational Context)
 
-5. **Create the core HUD and progression panels.**
-   - Show floor, current stats, prestige levels, essence totals, and next-threshold progress bars.
-   - Include obvious color coding for run vs persistent gains.
-   - Why fifth: players need legible goals and deltas to understand improvement.
+Use `AGENTS.md` as the working role definition for planning/implementation:
+- **Role:** experienced game designer + JavaScript developer focused on shippable MVP steps.
+- **Style:** clear Markdown, implementation-ready guidance, explain the “why”.
+- **Stack:** browser + vanilla JS + Canvas 2D + localStorage persistence.
+- **Constraints:** deterministic simulation separated from rendering, configurable formulas, legible feedback.
+- **Workflow:** check `progress.txt` first, implement, log concise change note, run lightweight validation.
 
-6. **Implement Essence upgrade purchasing with config-driven definitions.**
-   - Add upgrade registry (cost growth, effect scaling, caps) and spending logic.
-   - Start with XP gain and essence economy boosters from the design plan.
-   - Why sixth: spending choices add agency and smooth post-reset pacing.
+## New MVP Plan (Scope-Aligned)
 
-7. **Add autosave/load with versioned localStorage payload.**
-   - Persist run state, persistent state, resources, timestamps, and schema version.
-   - Autosave on interval and visibility/unload transitions.
-   - Why seventh: protects player progress and enables reliable iteration testing.
+This plan reflects current code reality and focuses on shipping a coherent MVP quickly.
 
-8. **Implement capped offline progression and return summary modal.**
-   - On load, compute elapsed time and grant capped condensed rewards (essence + optional prestige XP).
-   - Present concise “while you were away” breakdown.
-   - Why eighth: boosts return motivation while keeping economy controlled.
+### 1) Stabilize the Core Simulation Contract
+- Freeze state schema (`run`, `persistent`, `world`, `resources`, `combatTimers`, `enemy`).
+- Document event payloads emitted to renderer/UI.
+- Add regression smoke checks for encounter generation, reset behavior, and level-up edge cases.
+- Why: reliable contracts reduce accidental pacing and UI breakage during iteration.
 
-9. **Add milestone unlock flags + lightweight QoL automation.**
-   - Unlock auto-retry/auto-upgrade and optional speed controls at floor milestones.
-   - Keep all unlock thresholds in config for fast balance tuning.
-   - Why ninth: improves session flow once the base loop is proven.
+### 2) Finish Persistence + Offline Progression
+- Implement versioned save/load through `localStorage`.
+- Save run + persistent slices with timestamps.
+- On load, grant capped offline gains for Essence and cultivation flow.
+- Show a small “while away” summary panel.
+- Why: persistence is mandatory for incremental retention and practical playtesting.
 
-10. **Run a short balancing pass and document tuning knobs.**
-   - Execute multiple 5–10 minute play loops and adjust high-impact constants (XP curves, prestige coefficients, essence rewards, upgrade costs).
-   - Record before/after values and observed pacing outcomes.
-   - Why tenth: ensures MVP feels rewarding and avoids dead zones before expansion.
+### 3) Lock the HUD for Readability
+- Keep one always-visible compact panel: floor/best, depth, chain, essence, STR/END/AGI.
+- Add explicit progress bars for run XP, prestige XP, and agility essence thresholds.
+- Surface biome + rarity as color-coded badges during encounters.
+- Why: clarity improves player motivation and makes balance tuning measurable.
 
-## Planned Future Combat Extensions
+### 4) Add a Minimal Upgrade Layer
+- Add config-driven Essence upgrades (e.g., XP gain multiplier, essence gain multiplier, flow efficiency).
+- Implement purchase validation, escalating costs, and caps.
+- Render a simple upgrade panel (name, level, cost, effect delta).
+- Why: upgrades add agency and smooth reset frustration.
 
-1. **Expand range mechanics beyond the shared baseline.**
-   - Introduce asymmetric range modifiers (player vs enemy) once summon and formation systems are in place.
-   - Why: keeps MVP combat readable now, while preserving room for tactical depth later.
+### 5) Integrate Milestone Unlocks
+- Unlock cultivation tab and automation features via depth/best-floor milestones.
+- Add small UX boosts (auto-resume travel after combat, optional speed toggle).
+- Keep thresholds in config only.
+- Why: milestone rewards create medium-term goals without new systems.
 
-2. **Add summon-driven and gacha-influenced attack behavior.**
-   - Let summon types and collectible modifiers alter targeting, range profile, and attack cadence.
-   - Why: this ties long-term collection mechanics directly into combat feel and progression motivation.
+### 6) Ship MVP Balance Pass
+- Run repeated 5–10 minute loops.
+- Tune spawn pity, rarity weights, XP curves, prestige gain, and agility scaling.
+- Capture a short tuning changelog with before/after constants.
+- Why: MVP success depends on momentum and avoiding progression dead zones.
+
+## Recommended Immediate Backlog (Next 3 Tasks)
+1. Implement `saveGame/loadGame/applyOfflineProgress` module with schema versioning.
+2. Add progress bars + combat badges in UI for run XP/prestige XP/rarity visibility.
+3. Add first 3 Essence upgrades and wire purchase actions to simulation state.

@@ -112,3 +112,8 @@
 - Updated `src/simulation.js` reveal encounter logic to use a pity-based spawn system: 25% base chance, chance increases by a per-miss margin, and spawn is guaranteed after 10 successive no-enemy moves; miss streak resets on spawn/reset.
 - Updated `src/config.js` world spawn tuning fields to configurable pity parameters and adjusted rarity odds to requested values (uncommon 10%, rare 5%, epic 3%, legendary 1%, common 81%).
 - Ran lightweight validation checks (`node --check` and a Node smoke test) to verify syntax and guaranteed spawn behavior.
+2026-02-18 (scope review + MVP replanning)
+- Checked `progress.txt` before starting this task and reviewed current README/simulation scope alignment.
+- Rewrote `README.md` to match the implemented game loop (hex exploration, pity spawns, biome/rarity encounters, run/persistent growth, cultivation).
+- Added a scope-aligned new MVP plan with six concrete phases plus an immediate 3-task backlog.
+- Added an "Agent Character Sheet" operational section in README that mirrors the key AGENTS.md role/style/stack/workflow constraints for faster handoff context.
