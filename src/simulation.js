@@ -32,10 +32,49 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
       moveDirectionIndex: 0,
       spawnMissStreak: 0
     },
+    statistics: createBaselineStatistics(),
     combatTimers: { playerMs: 0, enemyMs: 0 },
     battlePositions: createInitialBattlePositions(config),
     enemy: null,
     combatLog: []
+  };
+}
+
+function createBaselineStatistics() {
+  return {
+    totalDeaths: 0,
+    totalEnemiesDefeated: 0,
+    enemiesDefeatedByRarity: {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0
+    },
+    totalLevelsGained: {
+      strength: 0,
+      endurance: 0,
+      body: 0,
+      mind: 0,
+      spirit: 0,
+      strengthPrestige: 0,
+      endurancePrestige: 0,
+      bodyPrestige: 0,
+      mindPrestige: 0,
+      spiritPrestige: 0
+    },
+    highestLevels: {
+      strength: 1,
+      endurance: 1,
+      body: 0,
+      mind: 0,
+      spirit: 0,
+      strengthPrestige: 0,
+      endurancePrestige: 0,
+      bodyPrestige: 0,
+      mindPrestige: 0,
+      spiritPrestige: 0
+    }
   };
 }
 
@@ -48,7 +87,8 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
   tickCombatIntervals({ state: next, dtMs, playerStats, config, events });
   resolveEncounterOutcome({ state: next, config, events });
   processCultivationFlow({ state: next, dtMs, config });
-  resolveLevelUps({ run: next.run, persistent: next.persistent, config, events });
+  resolveLevelUps({ run: next.run, persistent: next.persistent, statistics: next.statistics, config, events });
+  updateHighestLevels(next.statistics, next.run, next.persistent);
 
   return buildTickResult(next, dtMs, events);
 }
@@ -130,17 +170,17 @@ export function getEssenceReward(floor, config = GAME_CONFIG) {
   return Math.floor(config.rewards.essenceBase * Math.pow(floor, config.rewards.essenceExp));
 }
 
-export function resolveLevelUps({ run, persistent, config = GAME_CONFIG, events = [] }) {
-  processStrengthRunLevelUps({ run, config, events });
-  processEnduranceRunLevelUps({ run, config, events });
-  processStrengthPrestigeLevelUps({ persistent, config, events });
-  processEndurancePrestigeLevelUps({ persistent, config, events });
-  processBodyCultivationLevelUps({ run, config, events });
-  processBodyCultivationPrestigeLevelUps({ run, config, events });
-  processMindCultivationLevelUps({ run, config, events });
-  processMindCultivationPrestigeLevelUps({ run, config, events });
-  processSpiritCultivationLevelUps({ run, config, events });
-  processSpiritCultivationPrestigeLevelUps({ run, config, events });
+export function resolveLevelUps({ run, persistent, statistics, config = GAME_CONFIG, events = [] }) {
+  processStrengthRunLevelUps({ run, statistics, config, events });
+  processEnduranceRunLevelUps({ run, statistics, config, events });
+  processStrengthPrestigeLevelUps({ persistent, statistics, config, events });
+  processEndurancePrestigeLevelUps({ persistent, statistics, config, events });
+  processBodyCultivationLevelUps({ run, statistics, config, events });
+  processBodyCultivationPrestigeLevelUps({ run, statistics, config, events });
+  processMindCultivationLevelUps({ run, statistics, config, events });
+  processMindCultivationPrestigeLevelUps({ run, statistics, config, events });
+  processSpiritCultivationLevelUps({ run, statistics, config, events });
+  processSpiritCultivationPrestigeLevelUps({ run, statistics, config, events });
 
   const playerStats = buildPlayerStats(run, persistent);
   run.hp = Math.min(run.hp, getMaxHp(playerStats, config));
@@ -150,6 +190,7 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   if (!state.enemy) return;
 
   const reward = getEssenceReward(state.floor, config);
+  const defeatedEnemy = state.enemy;
   state.resources.essence += reward;
   state.floor += 1;
   state.bestFloor = Math.max(state.bestFloor, state.floor);
@@ -167,6 +208,13 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = Math.min(getMaxHp(playerStats, config), state.run.hp + getHpRegenPerSecond(state.run, config));
   events.push({ type: 'victory', reward, nextFloor: state.floor });
+
+  if (!defeatedEnemy) return;
+  state.statistics.totalEnemiesDefeated += 1;
+  const rarityKey = defeatedEnemy.rarity?.key;
+  if (rarityKey && state.statistics.enemiesDefeatedByRarity[rarityKey] !== undefined) {
+    state.statistics.enemiesDefeatedByRarity[rarityKey] += 1;
+  }
 }
 
 export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
@@ -180,6 +228,7 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   };
 
   state.floor = 1;
+  state.statistics.totalDeaths += 1;
   state.world.travelDepth = 0;
   state.world.pendingEncounters = 0;
   state.world.revealedHexes = 0;
@@ -573,94 +622,119 @@ function computePrestigeXpGain({ runXpGain, gainRate }) {
   return Math.max(1, Math.floor(runXpGain * gainRate));
 }
 
-function processStrengthRunLevelUps({ run, config, events }) {
+function processStrengthRunLevelUps({ run, statistics, config, events }) {
   while (run.strengthXp >= getRunXpThreshold(run.strengthLevel, config)) {
     const requiredXp = getRunXpThreshold(run.strengthLevel, config);
     run.strengthXp -= requiredXp;
     run.strengthLevel += 1;
+    if (statistics) statistics.totalLevelsGained.strength += 1;
     events.push({ type: 'strengthLevelUp', level: run.strengthLevel });
   }
 }
 
-function processEnduranceRunLevelUps({ run, config, events }) {
+function processEnduranceRunLevelUps({ run, statistics, config, events }) {
   while (run.enduranceXp >= getRunXpThreshold(run.enduranceLevel, config)) {
     const requiredXp = getRunXpThreshold(run.enduranceLevel, config);
     run.enduranceXp -= requiredXp;
     run.enduranceLevel += 1;
+    if (statistics) statistics.totalLevelsGained.endurance += 1;
     events.push({ type: 'enduranceLevelUp', level: run.enduranceLevel });
   }
 }
 
-function processStrengthPrestigeLevelUps({ persistent, config, events }) {
+function processStrengthPrestigeLevelUps({ persistent, statistics, config, events }) {
   while (persistent.strengthPrestigeXp >= getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config)) {
     const requiredXp = getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config);
     persistent.strengthPrestigeXp -= requiredXp;
     persistent.strengthPrestigeLevel += 1;
+    if (statistics) statistics.totalLevelsGained.strengthPrestige += 1;
     events.push({ type: 'strengthPrestigeLevelUp', level: persistent.strengthPrestigeLevel });
   }
 }
 
-function processEndurancePrestigeLevelUps({ persistent, config, events }) {
+function processEndurancePrestigeLevelUps({ persistent, statistics, config, events }) {
   while (persistent.endurancePrestigeXp >= getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config)) {
     const requiredXp = getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config);
     persistent.endurancePrestigeXp -= requiredXp;
     persistent.endurancePrestigeLevel += 1;
+    if (statistics) statistics.totalLevelsGained.endurancePrestige += 1;
     events.push({ type: 'endurancePrestigeLevelUp', level: persistent.endurancePrestigeLevel });
   }
 }
 
-function processBodyCultivationLevelUps({ run, config, events }) {
+function processBodyCultivationLevelUps({ run, statistics, config, events }) {
   while (run.bodyEssence >= getBodyEssenceThreshold(run.bodyLevel, config)) {
     const requiredEssence = getBodyEssenceThreshold(run.bodyLevel, config);
     run.bodyEssence -= requiredEssence;
     run.bodyLevel += 1;
+    if (statistics) statistics.totalLevelsGained.body += 1;
     events.push({ type: 'bodyLevelUp', level: run.bodyLevel });
   }
 }
 
-function processMindCultivationLevelUps({ run, config, events }) {
+function processMindCultivationLevelUps({ run, statistics, config, events }) {
   while (run.mindEssence >= getMindEssenceThreshold(run.mindLevel, config)) {
     const requiredEssence = getMindEssenceThreshold(run.mindLevel, config);
     run.mindEssence -= requiredEssence;
     run.mindLevel += 1;
+    if (statistics) statistics.totalLevelsGained.mind += 1;
     events.push({ type: 'mindLevelUp', level: run.mindLevel });
   }
 }
 
-function processSpiritCultivationLevelUps({ run, config, events }) {
+function processSpiritCultivationLevelUps({ run, statistics, config, events }) {
   while (run.spiritEssence >= getSpiritEssenceThreshold(run.spiritLevel, config)) {
     const requiredEssence = getSpiritEssenceThreshold(run.spiritLevel, config);
     run.spiritEssence -= requiredEssence;
     run.spiritLevel += 1;
+    if (statistics) statistics.totalLevelsGained.spirit += 1;
     events.push({ type: 'spiritLevelUp', level: run.spiritLevel });
   }
 }
 
-function processBodyCultivationPrestigeLevelUps({ run, config, events }) {
+function processBodyCultivationPrestigeLevelUps({ run, statistics, config, events }) {
   while (run.bodyPrestigeXp >= getPrestigeXpThreshold(run.bodyPrestigeLevel, config)) {
     const requiredXp = getPrestigeXpThreshold(run.bodyPrestigeLevel, config);
     run.bodyPrestigeXp -= requiredXp;
     run.bodyPrestigeLevel += 1;
+    if (statistics) statistics.totalLevelsGained.bodyPrestige += 1;
     events.push({ type: 'bodyPrestigeLevelUp', level: run.bodyPrestigeLevel });
   }
 }
 
-function processMindCultivationPrestigeLevelUps({ run, config, events }) {
+function processMindCultivationPrestigeLevelUps({ run, statistics, config, events }) {
   while (run.mindPrestigeXp >= getPrestigeXpThreshold(run.mindPrestigeLevel, config)) {
     const requiredXp = getPrestigeXpThreshold(run.mindPrestigeLevel, config);
     run.mindPrestigeXp -= requiredXp;
     run.mindPrestigeLevel += 1;
+    if (statistics) statistics.totalLevelsGained.mindPrestige += 1;
     events.push({ type: 'mindPrestigeLevelUp', level: run.mindPrestigeLevel });
   }
 }
 
-function processSpiritCultivationPrestigeLevelUps({ run, config, events }) {
+function processSpiritCultivationPrestigeLevelUps({ run, statistics, config, events }) {
   while (run.spiritPrestigeXp >= getPrestigeXpThreshold(run.spiritPrestigeLevel, config)) {
     const requiredXp = getPrestigeXpThreshold(run.spiritPrestigeLevel, config);
     run.spiritPrestigeXp -= requiredXp;
     run.spiritPrestigeLevel += 1;
+    if (statistics) statistics.totalLevelsGained.spiritPrestige += 1;
     events.push({ type: 'spiritPrestigeLevelUp', level: run.spiritPrestigeLevel });
   }
+}
+
+
+function updateHighestLevels(statistics, run, persistent) {
+  if (!statistics) return;
+  statistics.highestLevels.strength = Math.max(statistics.highestLevels.strength, run.strengthLevel);
+  statistics.highestLevels.endurance = Math.max(statistics.highestLevels.endurance, run.enduranceLevel);
+  statistics.highestLevels.body = Math.max(statistics.highestLevels.body, run.bodyLevel);
+  statistics.highestLevels.mind = Math.max(statistics.highestLevels.mind, run.mindLevel);
+  statistics.highestLevels.spirit = Math.max(statistics.highestLevels.spirit, run.spiritLevel);
+  statistics.highestLevels.strengthPrestige = Math.max(statistics.highestLevels.strengthPrestige, persistent.strengthPrestigeLevel);
+  statistics.highestLevels.endurancePrestige = Math.max(statistics.highestLevels.endurancePrestige, persistent.endurancePrestigeLevel);
+  statistics.highestLevels.bodyPrestige = Math.max(statistics.highestLevels.bodyPrestige, run.bodyPrestigeLevel);
+  statistics.highestLevels.mindPrestige = Math.max(statistics.highestLevels.mindPrestige, run.mindPrestigeLevel);
+  statistics.highestLevels.spiritPrestige = Math.max(statistics.highestLevels.spiritPrestige, run.spiritPrestigeLevel);
 }
 
 function resolveEncounterOutcome({ state, config, events }) {

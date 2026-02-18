@@ -68,7 +68,7 @@ export function applyOfflineProgress({ state, elapsedMs, config = GAME_CONFIG })
     if (state.activityMode === 'cultivation' && !state.enemy) {
       distributeCultivationEssence({ state, essence: flowEssenceSpent, flowRates: normalizedFlow, config });
     }
-    resolveLevelUps({ run: state.run, persistent: state.persistent, config, events: [] });
+    resolveLevelUps({ run: state.run, persistent: state.persistent, statistics: state.statistics, config, events: [] });
   }
 
   state.elapsedMs += cappedMs;

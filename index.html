@@ -10,106 +10,60 @@
         font-family: Inter, system-ui, sans-serif;
         background: #0e1117;
       }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         background: #0e1117;
         color: #e5e7eb;
         min-height: 100vh;
-        display: grid;
-        place-items: center;
       }
       .game-shell {
-        width: min(1180px, 96vw);
+        width: min(1200px, 100vw);
+        margin: 0 auto;
+        padding: 10px;
         display: grid;
-        grid-template-columns: 1fr 280px;
-        gap: 14px;
+        grid-template-columns: 1fr 320px;
+        gap: 10px;
       }
-      .battle-wrap {
-        position: relative;
-      }
+      .battle-wrap { position: relative; }
       #game {
         width: 100%;
-        height: min(560px, 78vh);
+        height: min(64vh, 560px);
         border: 1px solid #253042;
         background: #121826;
         border-radius: 8px;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       }
       .tab-nav {
-        margin-top: 10px;
+        margin-top: 8px;
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
       }
       .tab-nav button {
         border: 1px solid #2d3a4e;
         border-radius: 8px;
         background: #141c2a;
         color: #cbd5e1;
-        padding: 10px 8px;
-        font-size: 18px;
+        padding: 8px;
+        font-size: 13px;
+        font-weight: 700;
         cursor: pointer;
       }
-      .tab-nav button.active {
-        background: #23314a;
-        border-color: #4f73a6;
-      }
-      .tab-nav button:disabled {
-        cursor: not-allowed;
-        opacity: 0.45;
-      }
+      .tab-nav button.active { background: #23314a; border-color: #4f73a6; }
+      .tab-nav button:disabled { opacity: 0.45; cursor: not-allowed; }
       .side-panel {
         border: 1px solid #253042;
         border-radius: 8px;
         background: #111827;
-        padding: 14px;
+        padding: 12px;
         display: grid;
-        grid-template-rows: auto auto auto 1fr;
-        gap: 12px;
-        min-height: min(620px, 86vh);
+        grid-template-rows: auto auto 1fr;
+        gap: 10px;
+        min-height: min(760px, 92vh);
       }
-      .panel-title { font-weight: 700; font-size: 20px; }
-      .stat-line { color: #93a3b8; margin: 4px 0; font-size: 14px; }
-      .tab-content h3 { margin: 0 0 8px; }
-      .tab-content p { margin: 4px 0; color: #93a3b8; font-size: 13px; }
-      .progress-row { margin-top: 8px; }
-      .progress-label { font-size: 11px; color: #9fb0c8; margin-bottom: 4px; }
-      .progress-track {
-        height: 8px;
-        border-radius: 999px;
-        background: #2a3444;
-        overflow: hidden;
-      }
-      .progress-track > span { display: block; height: 100%; background: #60a5fa; }
-      .progress-track.str > span { background: #f87171; }
-      .progress-track.end > span { background: #34d399; }
-      .progress-track.prestige > span { background: #c084fc; }
-      .combat-badge {
-        margin-top: 10px;
-        border: 1px solid;
-        border-radius: 8px;
-        padding: 8px;
-        font-size: 12px;
-        font-weight: 600;
-        background: rgba(17, 24, 39, 0.75);
-      }
-      .combat-badge.idle {
-        border-color: #384961;
-        color: #9fb4d4;
-      }
-      .cultivate-slider { width: 100%; }
-      .mini-bar {
-        margin-top: 6px;
-        height: 10px;
-        border-radius: 999px;
-        overflow: hidden;
-        background: #273244;
-      }
-      .mini-bar > span {
-        display: block;
-        height: 100%;
-        background: #60a5fa;
-      }
+      .panel-title { font-weight: 700; font-size: 18px; margin-bottom: 6px; }
+      .stat-line { color: #9fb0c8; margin: 3px 0; font-size: 13px; }
+      .tab-content h3 { margin: 0 0 8px; font-size: 16px; }
       .offline-summary {
         border: 1px solid #2b3850;
         border-radius: 8px;
@@ -120,6 +74,71 @@
         display: grid;
         gap: 4px;
       }
+      .stat-grid {
+        display: grid;
+        gap: 8px;
+      }
+      .stat-grid > div {
+        background: #0f172a;
+        border: 1px solid #223049;
+        border-radius: 8px;
+        padding: 8px;
+        display: grid;
+        gap: 3px;
+      }
+      .stat-grid span,
+      .progress-meta { color: #93a3b8; font-size: 12px; }
+      .stat-grid strong,
+      .stats-list strong { color: #e5e7eb; }
+      .battle-enemy {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #a9bbd5;
+      }
+      .battle-log {
+        margin: 0;
+        padding-left: 18px;
+        max-height: 320px;
+        overflow: auto;
+        display: grid;
+        gap: 4px;
+        color: #cdd9eb;
+        font-size: 12px;
+      }
+      .cultivation-card {
+        border: 1px solid #223049;
+        background: #0f172a;
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 8px;
+      }
+      .stat-header { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+      .double-progress {
+        position: relative;
+        height: 12px;
+        border-radius: 999px;
+        background: #1f2c42;
+        overflow: hidden;
+      }
+      .double-progress .base,
+      .double-progress .overlay {
+        display: block;
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+      }
+      .double-progress .base { background: #60a5fa; }
+      .double-progress .overlay { background: rgba(192, 132, 252, 0.6); }
+      .cultivate-slider { width: 100%; margin-top: 6px; }
+      .stats-list { display: grid; gap: 6px; font-size: 12px; color: #aebfd6; }
+
+      @media (max-width: 900px) {
+        .game-shell { grid-template-columns: 1fr; padding: 8px; }
+        #game { height: min(52vh, 420px); }
+        .side-panel { min-height: unset; }
+        .tab-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
     </style>
   </head>
   <body>
@@ -127,9 +146,10 @@
       <section class="battle-wrap">
         <canvas id="game" width="920" height="560"></canvas>
         <nav class="tab-nav">
-          <button data-tab="battle" class="active" title="Battle">⚔️</button>
-          <button data-tab="growth" title="Growth">📊</button>
-          <button data-tab="cultivation" id="cultivation-tab" title="Cultivation" disabled>🧘</button>
+          <button data-tab="persistent" class="active">Persistent</button>
+          <button data-tab="battle">Battle</button>
+          <button data-tab="cultivation" id="cultivation-tab" disabled>Cultivation</button>
+          <button data-tab="stats">Stats</button>
         </nav>
       </section>
 
@@ -138,7 +158,6 @@
           <div class="panel-title">Infinity Warrior</div>
           <div id="core-stats"></div>
         </div>
-        <div class="mini-bar"><span id="mind-speed-fill" style="width:0%"></span></div>
         <div id="offline-summary" class="offline-summary"><span>No offline gains yet.</span></div>
         <div id="tab-content" class="tab-content"></div>
       </aside>
