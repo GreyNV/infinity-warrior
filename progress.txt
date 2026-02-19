@@ -217,3 +217,9 @@
 - Refactored `src/main.js` into modular, single-purpose infrastructure: introduced a `createGameApp` orchestration object, isolated runtime clock/feed management helpers, and separated navigation binding, UI syncing, and per-tab rendering helpers.
 - Kept simulation/render separation intact while making flow-slider binding and panel rendering reusable via object-parameter helper calls for readability and easier tuning.
 - Ran lightweight validation checks (`node --check` suite + targeted simulation smoke script) to verify syntax and main loop behavior compatibility.
+2026-02-19 (combat XP progression + pub-sub event routing)
+- Checked `progress.txt` before starting this task and applied requested XP/prestige progression tuning.
+- Updated `src/config.js` progression constants: run XP base is now 10 with +15% growth per level, prestige XP base is 100 with +20% growth per level, and STR/END prestige XP boost per prestige level is now +10% to the corresponding run XP gains.
+- Updated `src/simulation.js` so STR/END prestige XP gain is now directly tied to run XP gain (same amount per event), and switched run/prestige XP threshold formulas to percent-growth curves matching the new balance targets.
+- Introduced a lightweight pub-sub event bus in `src/main.js` and routed simulation tick events through it so battle feed updates and renderer event ingestion consume a shared event stream.
+- Ran lightweight validation checks (`node --check` suite + targeted Node smoke scripts) for syntax, XP threshold scaling, and STR prestige XP parity with STR run XP gain.
