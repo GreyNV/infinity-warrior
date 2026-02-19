@@ -109,6 +109,20 @@ export function createEnemyForDistance(distance, config = GAME_CONFIG, options =
   };
 }
 
+export function getEncounterDistanceForDepth({ playerHex, moveDirectionIndex, config = GAME_CONFIG }) {
+  const direction = HEX_DIRECTIONS[moveDirectionIndex % HEX_DIRECTIONS.length];
+  const spawnGap = Math.max(config.combat.effectiveRangeHex + 1, config.combat.startingHexGap);
+  const enemyHex = {
+    q: playerHex.q + direction.q * spawnGap,
+    r: playerHex.r + direction.r * spawnGap
+  };
+
+  return {
+    enemyHex,
+    encounterDistance: Math.max(1, getHexDistance(enemyHex, { q: 0, r: 0 }))
+  };
+}
+
 export function createInitialBattlePositions(config = GAME_CONFIG) {
   return {
     playerHex: { q: 0, r: 0 },
@@ -196,7 +210,8 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
 
   if (state.world.pendingEncounters > 0) {
     state.world.pendingEncounters -= 1;
-    spawnEncounterFromReveal({ state, config, events, reason: 'chain' });
+    const didSpawn = trySpawnEncounter({ state, config, events, reason: 'chain', spawnChance: getSpawnChance({ missStreak: 0, config }) });
+    if (!didSpawn) state.world.pendingEncounters = 0;
   } else {
     state.enemy = null;
     state.battlePositions.enemyHex = null;
@@ -521,7 +536,8 @@ function revealNextHex({ state, config, events }) {
   state.world.bestDepth = Math.max(state.world.bestDepth, state.world.travelDepth);
 
   const spawnChance = getSpawnChance({ missStreak: state.world.spawnMissStreak, config });
-  if (Math.random() > spawnChance) {
+  const didSpawn = trySpawnEncounter({ state, config, events, reason: 'reveal', spawnChance });
+  if (!didSpawn) {
     state.world.spawnMissStreak += 1;
     events.push({ type: 'revealHex', spawned: false, depth: state.world.travelDepth, spawnChance });
     return;
@@ -531,7 +547,7 @@ function revealNextHex({ state, config, events }) {
 
   const additionalEncounters = getConsecutiveEncounterCount({ travelDepth: state.world.travelDepth, config });
   state.world.pendingEncounters = Math.max(0, additionalEncounters - 1);
-  spawnEncounterFromReveal({ state, config, events, reason: 'reveal' });
+  events.push({ type: 'revealHex', spawned: true, depth: state.world.travelDepth, spawnChance });
 }
 
 function getSpawnChance({ missStreak, config }) {
@@ -545,17 +561,14 @@ function getConsecutiveEncounterCount({ travelDepth, config }) {
 }
 
 function spawnEncounterFromReveal({ state, config, events, reason }) {
-  const playerHex = state.battlePositions.playerHex;
-  const direction = HEX_DIRECTIONS[state.world.moveDirectionIndex % HEX_DIRECTIONS.length];
-  const spawnGap = Math.max(config.combat.effectiveRangeHex + 1, config.combat.startingHexGap);
-  const enemyHex = {
-    q: playerHex.q + direction.q * spawnGap,
-    r: playerHex.r + direction.r * spawnGap
-  };
+  const { enemyHex, encounterDistance } = getEncounterDistanceForDepth({
+    playerHex: state.battlePositions.playerHex,
+    moveDirectionIndex: state.world.moveDirectionIndex,
+    config
+  });
 
   state.battlePositions.enemyHex = enemyHex;
   const biome = getWorldRegion({ hex: enemyHex, config });
-  const encounterDistance = Math.max(1, getHexDistance(enemyHex, { q: 0, r: 0 }));
   state.enemy = createEnemyForDistance(encounterDistance, config, {
     biome,
     hex: enemyHex,
@@ -572,6 +585,18 @@ function spawnEncounterFromReveal({ state, config, events, reason }) {
     rarity: state.enemy.rarity.key,
     biome: biome.name
   });
+}
+
+function trySpawnEncounter({ state, config, events, reason, spawnChance }) {
+  if (Math.random() > spawnChance) {
+    if (reason === 'chain') {
+      events.push({ type: 'chainSpawnMiss', depth: state.world.travelDepth, spawnChance });
+    }
+    return false;
+  }
+
+  spawnEncounterFromReveal({ state, config, events, reason });
+  return true;
 }
 
 function rollRarity(config) {

@@ -3,6 +3,7 @@ import {
   buildPlayerStats,
   createInitialSimulationState,
   getBodyEssenceThreshold,
+  getEncounterDistanceForDepth,
   getEnemyAttack,
   getEnemyMaxHp,
   getHpRegenPerSecond,
@@ -176,7 +177,7 @@ function renderCharacterTab() {
 function renderBattleTab() {
   const enemy = state.enemy;
   const enemyLabel = enemy
-    ? `${enemy.rarity?.label ?? 'Unknown'} ${enemy.biome?.name ?? 'Unknown'} · HP ${Math.floor(enemy.hp)} / ${Math.floor(enemy.maxHp)}`
+    ? `${enemy.rarity?.label ?? 'Unknown'} ${enemy.biome?.name ?? 'Unknown'} · HP ${Math.floor(enemy.hp)} / ${Math.floor(enemy.maxHp)} · ATK ${enemy.attack}`
     : 'No enemy';
 
   const rows = battleFeed.length
@@ -291,9 +292,14 @@ function getCharacterBattleStats() {
     1 + Math.log1p(Math.max(0, state.run.mindLevel)) * GAME_CONFIG.cultivation.mindSpeedLogFactor
   );
   const attackIntervalMs = Math.max(GAME_CONFIG.combat.minAttackIntervalMs, GAME_CONFIG.combat.playerAttackIntervalMs / mindMultiplier);
-  const depthScale = Math.max(1, state.world.travelDepth);
-  const enemyAttack = getEnemyAttack(depthScale, GAME_CONFIG);
-  const enemyHealth = getEnemyMaxHp(depthScale, GAME_CONFIG);
+  const previewDepth = Math.max(1, state.world.travelDepth);
+  const { encounterDistance } = getEncounterDistanceForDepth({
+    playerHex: state.battlePositions.playerHex,
+    moveDirectionIndex: state.world.moveDirectionIndex,
+    config: GAME_CONFIG
+  });
+  const enemyAttack = state.enemy?.attack ?? getEnemyAttack({ distance: encounterDistance, currentDepth: previewDepth, config: GAME_CONFIG }, GAME_CONFIG);
+  const enemyHealth = state.enemy?.maxHp ?? getEnemyMaxHp({ distance: encounterDistance, currentDepth: previewDepth, config: GAME_CONFIG }, GAME_CONFIG);
 
   return {
     attackPower: Math.max(1, Math.floor(GAME_CONFIG.combat.playerBaseAttack + (state.run.strengthLevel - 1) * GAME_CONFIG.combat.strengthAttackPerLevel)),
