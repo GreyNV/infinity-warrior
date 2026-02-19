@@ -7,14 +7,12 @@ export const GAME_CONFIG = {
   progression: {
     strengthXpPerDamage: 1,
     enduranceXpPerDamage: 1,
-    strengthXpBoostPerStrengthPrestigeLevel: 0.02,
-    enduranceXpBoostPerEndurancePrestigeLevel: 0.02,
-    runXpBase: 20,
-    runXpExp: 1.30,
-    prestigeXpBase: 120,
-    prestigeXpExp: 1.55,
-    strengthPrestigeGain: 0.08,
-    endurancePrestigeGain: 0.08
+    strengthXpBoostPerStrengthPrestigeLevel: 0.10,
+    enduranceXpBoostPerEndurancePrestigeLevel: 0.10,
+    runXpBase: 10,
+    runXpGrowthRate: 0.15,
+    prestigeXpBase: 100,
+    prestigeXpGrowthRate: 0.20
   },
   combat: {
     playerAttackIntervalMs: 650,

@@ -173,11 +173,11 @@ export function buildPlayerStats(run, persistent) {
 }
 
 export function getRunXpThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.progression.runXpBase * Math.pow(level, config.progression.runXpExp));
+  return Math.floor(config.progression.runXpBase * Math.pow(1 + config.progression.runXpGrowthRate, Math.max(0, level - 1)));
 }
 
 export function getPrestigeXpThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.progression.prestigeXpBase * Math.pow(level + 1, config.progression.prestigeXpExp));
+  return Math.floor(config.progression.prestigeXpBase * Math.pow(1 + config.progression.prestigeXpGrowthRate, Math.max(0, level)));
 }
 
 export function getEssenceReward({ distance, rarity, config = GAME_CONFIG }) {
@@ -385,7 +385,7 @@ function applyPlayerAttack({ state, playerStats, config, events }) {
   if (!state.enemy) return;
   const playerDamage = computePlayerDamage(playerStats, config);
   const strengthXpGain = computeStrengthXpGain(playerDamage, playerStats, config);
-  const strengthPrestigeXpGain = computePrestigeXpGain({ runXpGain: strengthXpGain, gainRate: config.progression.strengthPrestigeGain });
+  const strengthPrestigeXpGain = strengthXpGain;
 
   state.run.strengthXp += strengthXpGain;
   state.persistent.strengthPrestigeXp += strengthPrestigeXpGain;
@@ -398,7 +398,7 @@ function applyEnemyAttack({ state, playerStats, config, events }) {
   if (!state.enemy) return;
   const enemyDamage = computeIncomingDamage({ enemyAttack: state.enemy.attack, config });
   const enduranceXpGain = computeEnduranceXpGain(enemyDamage, playerStats, config);
-  const endurancePrestigeXpGain = computePrestigeXpGain({ runXpGain: enduranceXpGain, gainRate: config.progression.endurancePrestigeGain });
+  const endurancePrestigeXpGain = enduranceXpGain;
 
   state.run.enduranceXp += enduranceXpGain;
   state.persistent.endurancePrestigeXp += endurancePrestigeXpGain;
@@ -659,6 +659,7 @@ function isWithinEffectiveRange(state, config) {
 function getHexDistance(from, to) {
   return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs(from.q + from.r - to.q - to.r)) / 2;
 }
+
 
 function computePrestigeXpGain({ runXpGain, gainRate }) {
   if (runXpGain <= 0 || gainRate <= 0) return 0;

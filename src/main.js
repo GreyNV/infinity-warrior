@@ -41,8 +41,14 @@ function createGameApp({ config, ui, renderer, loadGame: loadFn, saveGame: saveF
   let selectedTab = getInitialSelectedTab(state);
   state.activityMode = getValidatedMode(state);
 
+  const eventBus = createPubSub();
   const battleFeed = createBattleFeed({ maxEntries: 24 });
   const runtime = createRuntimeClock({ config });
+
+  eventBus.subscribe('simulation:tick', ({ events }) => {
+    battleFeed.capture(events);
+    renderer.ingestEvents(events);
+  });
 
   bindNavigationHandlers({ ui, getState: () => state, onTabChange: handleTabChange, onModeChange: handleModeChange });
   renderOfflineSummary({ ui, report: loaded.offlineReport });
@@ -70,8 +76,7 @@ function createGameApp({ config, ui, renderer, loadGame: loadFn, saveGame: saveF
 
     while (runtime.accumulatorMs >= config.timing.simulationDtMs) {
       state = tickFn(state, config.timing.simulationDtMs, config);
-      battleFeed.capture(state.combatLog);
-      renderer.ingestEvents(state.combatLog);
+      eventBus.publish('simulation:tick', { events: state.combatLog, state });
       runtime.accumulatorMs -= config.timing.simulationDtMs;
     }
   }
@@ -96,6 +101,7 @@ function createGameApp({ config, ui, renderer, loadGame: loadFn, saveGame: saveF
   function handleTabChange(nextTab) {
     if (nextTab === 'cultivation' && !state.unlocks.cultivation) return;
     selectedTab = nextTab;
+    eventBus.publish('ui:tabChanged', { tab: selectedTab });
     syncUiState();
     renderUi();
   }
@@ -103,6 +109,7 @@ function createGameApp({ config, ui, renderer, loadGame: loadFn, saveGame: saveF
   function handleModeChange(nextMode) {
     if (nextMode === 'cultivation' && !state.unlocks.cultivation) return;
     state.activityMode = nextMode;
+    eventBus.publish('ui:modeChanged', { mode: state.activityMode });
     syncUiState();
     renderUi();
   }
@@ -169,6 +176,32 @@ function createRuntimeClock({ config }) {
       return frameMs;
     }
   };
+}
+
+
+function createPubSub() {
+  const listenersByTopic = new Map();
+
+  function subscribe(topic, handler) {
+    const listeners = listenersByTopic.get(topic) ?? new Set();
+    listeners.add(handler);
+    listenersByTopic.set(topic, listeners);
+
+    return () => {
+      const topicListeners = listenersByTopic.get(topic);
+      if (!topicListeners) return;
+      topicListeners.delete(handler);
+      if (!topicListeners.size) listenersByTopic.delete(topic);
+    };
+  }
+
+  function publish(topic, payload) {
+    const listeners = listenersByTopic.get(topic);
+    if (!listeners) return;
+    for (const listener of listeners) listener(payload);
+  }
+
+  return { subscribe, publish };
 }
 
 function createBattleFeed({ maxEntries }) {
