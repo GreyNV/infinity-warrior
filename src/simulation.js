@@ -459,12 +459,16 @@ function processCultivationFlow({ state, dtMs, config }) {
   const mindEssence = spentEssence * flowRates.mind;
   const spiritEssence = spentEssence * flowRates.spirit;
 
-  state.run.bodyEssence += toCultivationExp({ allocatedEssence: bodyEssence, prestigeLevel: state.run.bodyPrestigeLevel, config });
-  state.run.mindEssence += toCultivationExp({ allocatedEssence: mindEssence, prestigeLevel: state.run.mindPrestigeLevel, config });
-  state.run.spiritEssence += toCultivationExp({ allocatedEssence: spiritEssence, prestigeLevel: state.run.spiritPrestigeLevel, config });
-  state.run.bodyPrestigeXp += computePrestigeXpGain({ runXpGain: bodyEssence, gainRate: config.cultivation.cultivationPrestigeGain });
-  state.run.mindPrestigeXp += computePrestigeXpGain({ runXpGain: mindEssence, gainRate: config.cultivation.cultivationPrestigeGain });
-  state.run.spiritPrestigeXp += computePrestigeXpGain({ runXpGain: spiritEssence, gainRate: config.cultivation.cultivationPrestigeGain });
+  const bodyXpGain = toCultivationExp({ allocatedEssence: bodyEssence, prestigeLevel: state.run.bodyPrestigeLevel, config });
+  const mindXpGain = toCultivationExp({ allocatedEssence: mindEssence, prestigeLevel: state.run.mindPrestigeLevel, config });
+  const spiritXpGain = toCultivationExp({ allocatedEssence: spiritEssence, prestigeLevel: state.run.spiritPrestigeLevel, config });
+
+  state.run.bodyEssence += bodyXpGain;
+  state.run.mindEssence += mindXpGain;
+  state.run.spiritEssence += spiritXpGain;
+  state.run.bodyPrestigeXp += bodyXpGain;
+  state.run.mindPrestigeXp += mindXpGain;
+  state.run.spiritPrestigeXp += spiritXpGain;
 }
 
 function normalizeFlowRates(flowRates = {}) {
@@ -660,11 +664,6 @@ function getHexDistance(from, to) {
   return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs(from.q + from.r - to.q - to.r)) / 2;
 }
 
-
-function computePrestigeXpGain({ runXpGain, gainRate }) {
-  if (runXpGain <= 0 || gainRate <= 0) return 0;
-  return Math.max(1, Math.floor(runXpGain * gainRate));
-}
 
 function processStrengthRunLevelUps({ run, statistics, config, events }) {
   while (run.strengthXp >= getRunXpThreshold(run.strengthLevel, config)) {
