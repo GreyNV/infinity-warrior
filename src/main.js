@@ -28,7 +28,7 @@ const cultivationModeEl = document.getElementById('cultivation-mode');
 let state = createInitialSimulationState(GAME_CONFIG);
 const loadedGame = loadGame(GAME_CONFIG);
 state = loadedGame.state;
-let selectedTab = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'persistent';
+let selectedTab = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'character';
 state.activityMode = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'battle';
 let lastFrameMs = performance.now();
 let accumulator = 0;
@@ -100,7 +100,7 @@ function syncNavState() {
   cultivationModeEl.disabled = !state.unlocks.cultivation;
 
   if (!state.unlocks.cultivation && selectedTab === 'cultivation') {
-    selectedTab = 'persistent';
+    selectedTab = 'character';
     state.activityMode = 'battle';
   }
 
@@ -134,7 +134,7 @@ function renderPanel() {
     return;
   }
 
-  tabContentEl.innerHTML = renderPersistentTab();
+  tabContentEl.innerHTML = renderCharacterTab();
 }
 
 function renderQuickCoreSummary() {
@@ -142,26 +142,31 @@ function renderQuickCoreSummary() {
   const overallPower = computeOverallPower();
 
   return `
-    <div class="stat-line">Floor ${state.floor} · Best ${state.bestFloor}</div>
-    <div class="stat-line">Depth ${state.world.travelDepth} · Revealed ${state.world.revealedHexes}</div>
+    <div class="stat-line">Depth ${state.world.travelDepth} · Best ${state.world.bestDepth}</div>
+    <div class="stat-line">Revealed ${state.world.revealedHexes} hexes</div>
     <div class="stat-line">Essence ${Math.floor(state.resources.essence)} · Ki ${state.run.ki.toFixed(2)} / ${maxKi.toFixed(1)}</div>
     <div class="stat-line">Power ${overallPower.toLocaleString()}</div>
   `;
 }
 
-function renderPersistentTab() {
+function renderCharacterTab() {
   const chainCount = state.enemy ? state.world.pendingEncounters + 1 : 0;
   const activity = state.enemy ? 'In combat' : state.activityMode === 'cultivation' ? 'Cultivating' : 'Exploring';
+  const battleStats = getCharacterBattleStats();
 
   return `
-    <h3>Persistent</h3>
+    <h3>Character</h3>
     <div class="stat-grid">
       <div><span>Location</span><strong>Hex ${state.battlePositions.playerHex.q}, ${state.battlePositions.playerHex.r}</strong></div>
       <div><span>Activity</span><strong>${activity}</strong></div>
-      <div><span>Progress</span><strong>Floor ${state.floor} / Best ${state.bestFloor}</strong></div>
+      <div><span>Progress</span><strong>Depth ${state.world.travelDepth} / Best ${state.world.bestDepth}</strong></div>
       <div><span>Chain</span><strong>${chainCount}</strong></div>
       <div><span>Overall Power</span><strong>${computeOverallPower().toLocaleString()}</strong></div>
       <div><span>HP Regen</span><strong>${getHpRegenPerSecond(state.run, GAME_CONFIG).toFixed(2)}/s</strong></div>
+      <div><span>Attack Power</span><strong>${battleStats.attackPower}</strong></div>
+      <div><span>Attack Speed</span><strong>${battleStats.attacksPerSecond}/s</strong></div>
+      <div><span>Max Health</span><strong>${battleStats.maxHealth}</strong></div>
+      <div><span>Enemy Power @ Depth</span><strong>${battleStats.enemyAttack} ATK · ${battleStats.enemyHealth} HP</strong></div>
     </div>
   `;
 }
@@ -278,6 +283,25 @@ function renderStatsTab() {
   `;
 }
 
+function getCharacterBattleStats() {
+  const mindMultiplier = Math.min(
+    GAME_CONFIG.cultivation.maxAttackSpeedMultiplier,
+    1 + Math.log1p(Math.max(0, state.run.mindLevel)) * GAME_CONFIG.cultivation.mindSpeedLogFactor
+  );
+  const attackIntervalMs = Math.max(GAME_CONFIG.combat.minAttackIntervalMs, GAME_CONFIG.combat.playerAttackIntervalMs / mindMultiplier);
+  const depthScale = Math.max(1, state.world.travelDepth);
+  const enemyAttack = Math.floor(GAME_CONFIG.combat.enemyAttackBase + Math.pow(Math.max(0, depthScale - 1), GAME_CONFIG.combat.enemyAttackExp));
+  const enemyHealth = Math.floor(GAME_CONFIG.combat.enemyHpBase * Math.pow(depthScale, GAME_CONFIG.combat.enemyHpExp));
+
+  return {
+    attackPower: Math.max(1, Math.floor(GAME_CONFIG.combat.playerBaseAttack + (state.run.strengthLevel - 1) * GAME_CONFIG.combat.strengthAttackPerLevel)),
+    attacksPerSecond: (1000 / attackIntervalMs).toFixed(2),
+    maxHealth: Math.floor(GAME_CONFIG.combat.playerBaseHp + (state.run.enduranceLevel - 1) * GAME_CONFIG.combat.enduranceHpPerLevel),
+    enemyAttack,
+    enemyHealth
+  };
+}
+
 function computeOverallPower() {
   const base =
     state.run.strengthLevel * 1.4 +
@@ -294,7 +318,7 @@ function computeOverallPower() {
     state.run.spiritPrestigeLevel;
 
   const prestigeMultiplier = 1 + prestigeTotal * 0.08;
-  const progressMultiplier = 1 + Math.max(0, state.bestFloor - 1) * 0.03;
+  const progressMultiplier = 1 + Math.max(0, state.world.bestDepth - 1) * 0.03;
 
   return Math.floor(base * prestigeMultiplier * progressMultiplier * 100);
 }

@@ -78,8 +78,7 @@ export const GAME_CONFIG = {
     biomeBandSize: 9,
     revealSpawnChanceBase: 0.25,
     revealSpawnChanceMissIncrement: 0.075,
-    revealSpawnChanceCap: 0.95,
-    revealSpawnGuaranteeMisses: 10,
+    revealSpawnChanceCap: 0.9,
     consecutiveEnemiesDepthStep: 12,
     consecutiveEnemiesBase: 1,
     biomes: [
