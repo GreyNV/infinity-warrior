@@ -173,3 +173,14 @@
 - Updated `index.html` and `src/main.js` to add a dedicated Activity Mode toggle (Battle Mode / Cultivation Mode) so player state can change independently of the currently viewed tab.
 - Kept tab navigation focused on UI visibility only, while `activityMode` now changes exclusively through the new mode switch and still respects cultivation unlock gating.
 - Ran lightweight validation checks (`node --check` suite) and captured an updated screenshot artifact showing the new mode-switch controls.
+2026-02-19 (logic round: prestige-xp scope + cultivation visibility + rarity essence)
+- Checked `progress.txt` before starting this task and reviewed AGENTS character sheet requirements.
+- Updated `src/simulation.js` + `src/config.js` so STR/END prestige no longer directly boosts combat damage/HP; prestige influence remains in STR/END XP gain multipliers for their own underlying stats.
+- Added rarity-based essence reward modifiers to combat rarity tiers and victory reward calculation so higher-rarity enemies grant more Essence.
+- Updated `src/main.js` cultivation tab to also display Strength and Endurance progress cards (read-only; no flow sliders) while retaining combat-only leveling behavior.
+- Ran lightweight validation checks (`node --check` suite + targeted Node smoke script) and captured an updated cultivation-tab screenshot artifact.
+2026-02-19 (follow-up: cultivation prestige base-stat decoupling + harsher run-level scaling)
+- Checked `progress.txt` before starting this follow-up and reviewed AGENTS character sheet guidance.
+- Updated `src/simulation.js` so cultivation prestige levels no longer directly modify base stat outputs: Body prestige no longer adds direct HP regen, Mind prestige no longer adds direct attack-speed multiplier, and Spirit prestige no longer adds direct max Ki.
+- Retuned cultivation level requirement curves in `src/config.js`: lowered base essence requirements for Body/Mind/Spirit to make early run progression more noticeable, while increasing exponent scaling for steeper later-level growth.
+- Ran lightweight validation checks (`node --check` suite + targeted threshold/base-stat smoke script) to confirm syntax and intended behavior.

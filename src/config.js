@@ -25,10 +25,8 @@ export const GAME_CONFIG = {
     effectiveRangeHex: 1,
     playerBaseAttack: 6,
     strengthAttackPerLevel: 1.6,
-    strengthPrestigeAttackPerLevel: 0.35,
     playerBaseHp: 90,
     enduranceHpPerLevel: 13,
-    endurancePrestigeHpPerLevel: 3,
     enemyHpBase: 30,
     enemyHpExp: 1.35,
     enemyAttackBase: 4,
@@ -41,11 +39,11 @@ export const GAME_CONFIG = {
       CrystalVerge: { hp: 1.02, attack: 1.08 }
     },
     rarityTiers: [
-      { key: 'common', chance: 0.81, hp: 1, attack: 1, color: '#9ca3af', label: 'Common' },
-      { key: 'uncommon', chance: 0.10, hp: 1.35, attack: 1.2, color: '#34d399', label: 'Uncommon' },
-      { key: 'rare', chance: 0.05, hp: 1.8, attack: 1.45, color: '#60a5fa', label: 'Rare' },
-      { key: 'epic', chance: 0.03, hp: 2.45, attack: 1.9, color: '#c084fc', label: 'Epic' },
-      { key: 'legendary', chance: 0.01, hp: 3.4, attack: 2.7, color: '#f59e0b', label: 'Legendary' }
+      { key: 'common', chance: 0.81, hp: 1, attack: 1, essence: 1, color: '#9ca3af', label: 'Common' },
+      { key: 'uncommon', chance: 0.10, hp: 1.35, attack: 1.2, essence: 1.2, color: '#34d399', label: 'Uncommon' },
+      { key: 'rare', chance: 0.05, hp: 1.8, attack: 1.45, essence: 1.45, color: '#60a5fa', label: 'Rare' },
+      { key: 'epic', chance: 0.03, hp: 2.45, attack: 1.9, essence: 1.85, color: '#c084fc', label: 'Epic' },
+      { key: 'legendary', chance: 0.01, hp: 3.4, attack: 2.7, essence: 2.4, color: '#f59e0b', label: 'Legendary' }
     ]
   },
   rewards: {
@@ -56,21 +54,19 @@ export const GAME_CONFIG = {
     maxFlowEssencePerSecond: 18,
     hpRegenBasePerSecond: 0.8,
     hpRegenPerBodyLevel: 0.22,
-    hpRegenPerBodyPrestigeLevel: 0.08,
-    mindEssenceBase: 40,
-    mindEssenceExp: 1.38,
+    mindEssenceBase: 28,
+    mindEssenceExp: 1.56,
     mindSpeedLogFactor: 0.26,
     maxAttackSpeedMultiplier: 3,
-    bodyEssenceBase: 36,
-    bodyEssenceExp: 1.35,
-    spiritEssenceBase: 52,
-    spiritEssenceExp: 1.4,
+    bodyEssenceBase: 24,
+    bodyEssenceExp: 1.52,
+    spiritEssenceBase: 34,
+    spiritEssenceExp: 1.58,
     essenceXpBoostPerPrestigeLevel: 0.08,
     cultivationPrestigeGain: 0.12,
     kiBaseRegenPerSecond: 0.01,
     kiMaxBase: 1,
     kiMaxPerSpiritLevel: 1,
-    kiMaxPerSpiritPrestigeLevel: 0.5
   },
   persistence: {
     offlineEssencePerSecondBase: 0.15,

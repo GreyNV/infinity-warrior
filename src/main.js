@@ -187,6 +187,28 @@ function renderCultivationTab() {
   return `
     <h3>Cultivation</h3>
     ${renderCultivationStat({
+      key: 'strength',
+      label: 'Strength',
+      level: state.run.strengthLevel,
+      prestigeLevel: state.persistent.strengthPrestigeLevel,
+      currentExp: state.run.strengthXp,
+      currentThreshold: getRunXpThreshold(state.run.strengthLevel, GAME_CONFIG),
+      prestigeExp: state.persistent.strengthPrestigeXp,
+      prestigeThreshold: getPrestigeXpThreshold(state.persistent.strengthPrestigeLevel, GAME_CONFIG),
+      showSlider: false
+    })}
+    ${renderCultivationStat({
+      key: 'endurance',
+      label: 'Endurance',
+      level: state.run.enduranceLevel,
+      prestigeLevel: state.persistent.endurancePrestigeLevel,
+      currentExp: state.run.enduranceXp,
+      currentThreshold: getRunXpThreshold(state.run.enduranceLevel, GAME_CONFIG),
+      prestigeExp: state.persistent.endurancePrestigeXp,
+      prestigeThreshold: getPrestigeXpThreshold(state.persistent.endurancePrestigeLevel, GAME_CONFIG),
+      showSlider: false
+    })}
+    ${renderCultivationStat({
       key: 'body',
       label: 'Body',
       level: state.run.bodyLevel,
@@ -219,7 +241,7 @@ function renderCultivationTab() {
   `;
 }
 
-function renderCultivationStat({ key, label, level, prestigeLevel, currentExp, currentThreshold, prestigeExp, prestigeThreshold }) {
+function renderCultivationStat({ key, label, level, prestigeLevel, currentExp, currentThreshold, prestigeExp, prestigeThreshold, showSlider = true }) {
   const currentRatio = getProgressRatio(currentExp, currentThreshold);
   const prestigeRatio = getProgressRatio(prestigeExp, prestigeThreshold);
 
@@ -231,7 +253,7 @@ function renderCultivationStat({ key, label, level, prestigeLevel, currentExp, c
         <span class="overlay" style="width:${(prestigeRatio * 100).toFixed(1)}%"></span>
       </div>
       <div class="progress-meta">${Math.floor(currentExp)} / ${currentThreshold} · Prestige ${Math.floor(prestigeExp)} / ${prestigeThreshold}</div>
-      <input id="flow-${key}" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates[key] * 100)}" />
+      ${showSlider ? `<input id="flow-${key}" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates[key] * 100)}" />` : '<div class="progress-meta">Leveled through combat only.</div>'}
     </div>
   `;
 }
@@ -288,7 +310,7 @@ function captureCombatFeed(events) {
     }
 
     if (event.type === 'victory') {
-      battleFeed.unshift(`Victory · Essence +${event.reward}`);
+      battleFeed.unshift(`Victory (${event.rarity}) · Essence +${event.reward}`);
     }
   }
 

@@ -166,8 +166,9 @@ export function getPrestigeXpThreshold(level, config = GAME_CONFIG) {
   return Math.floor(config.progression.prestigeXpBase * Math.pow(level + 1, config.progression.prestigeXpExp));
 }
 
-export function getEssenceReward(floor, config = GAME_CONFIG) {
-  return Math.floor(config.rewards.essenceBase * Math.pow(floor, config.rewards.essenceExp));
+export function getEssenceReward({ floor, rarity, config = GAME_CONFIG }) {
+  const rarityMultiplier = rarity?.essence ?? 1;
+  return Math.floor(config.rewards.essenceBase * Math.pow(floor, config.rewards.essenceExp) * rarityMultiplier);
 }
 
 export function resolveLevelUps({ run, persistent, statistics, config = GAME_CONFIG, events = [] }) {
@@ -189,7 +190,7 @@ export function resolveLevelUps({ run, persistent, statistics, config = GAME_CON
 export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   if (!state.enemy) return;
 
-  const reward = getEssenceReward(state.floor, config);
+  const reward = getEssenceReward({ floor: state.floor, rarity: state.enemy.rarity, config });
   const defeatedEnemy = state.enemy;
   state.resources.essence += reward;
   state.floor += 1;
@@ -207,7 +208,7 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
 
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = Math.min(getMaxHp(playerStats, config), state.run.hp + getHpRegenPerSecond(state.run, config));
-  events.push({ type: 'victory', reward, nextFloor: state.floor });
+  events.push({ type: 'victory', reward, rarity: defeatedEnemy?.rarity?.label ?? 'Unknown', nextFloor: state.floor });
 
   if (!defeatedEnemy) return;
   state.statistics.totalEnemiesDefeated += 1;
@@ -264,12 +265,8 @@ export function isCombatOver(state) {
 }
 
 export function getMaxHp(playerStats, config = GAME_CONFIG) {
-  const { playerBaseHp, enduranceHpPerLevel, endurancePrestigeHpPerLevel } = config.combat;
-  return Math.floor(
-    playerBaseHp +
-      (playerStats.enduranceLevel - 1) * enduranceHpPerLevel +
-      playerStats.endurancePrestigeLevel * endurancePrestigeHpPerLevel
-  );
+  const { playerBaseHp, enduranceHpPerLevel } = config.combat;
+  return Math.floor(playerBaseHp + (playerStats.enduranceLevel - 1) * enduranceHpPerLevel);
 }
 
 export function getEnemyMaxHp(floor, config = GAME_CONFIG) {
@@ -282,11 +279,8 @@ export function getEnemyAttack(floor, config = GAME_CONFIG) {
 }
 
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
-  const { playerBaseAttack, strengthAttackPerLevel, strengthPrestigeAttackPerLevel, minDamage } = config.combat;
-  const rawDamage =
-    playerBaseAttack +
-    (playerStats.strengthLevel - 1) * strengthAttackPerLevel +
-    playerStats.strengthPrestigeLevel * strengthPrestigeAttackPerLevel;
+  const { playerBaseAttack, strengthAttackPerLevel, minDamage } = config.combat;
+  const rawDamage = playerBaseAttack + (playerStats.strengthLevel - 1) * strengthAttackPerLevel;
 
   return Math.max(minDamage, Math.floor(rawDamage));
 }
@@ -312,7 +306,7 @@ export function getAgilityEssenceThreshold(level, config = GAME_CONFIG) {
 }
 
 export function getAgilityAttackSpeedMultiplier({ agilityLevel, config = GAME_CONFIG }) {
-  return getMindAttackSpeedMultiplier({ mindLevel: agilityLevel, mindPrestigeLevel: 0, config });
+  return getMindAttackSpeedMultiplier({ mindLevel: agilityLevel, config });
 }
 
 export function getBodyEssenceThreshold(level, config = GAME_CONFIG) {
@@ -327,20 +321,20 @@ export function getSpiritEssenceThreshold(level, config = GAME_CONFIG) {
   return Math.floor(config.cultivation.spiritEssenceBase * Math.pow(level + 1, config.cultivation.spiritEssenceExp));
 }
 
-export function getMindAttackSpeedMultiplier({ mindLevel, mindPrestigeLevel = 0, config = GAME_CONFIG }) {
-  const totalMindLevel = Math.max(0, mindLevel + mindPrestigeLevel);
+export function getMindAttackSpeedMultiplier({ mindLevel, config = GAME_CONFIG }) {
+  const totalMindLevel = Math.max(0, mindLevel);
   const rawMultiplier = 1 + Math.log1p(totalMindLevel) * config.cultivation.mindSpeedLogFactor;
   return Math.min(config.cultivation.maxAttackSpeedMultiplier, rawMultiplier);
 }
 
 export function getHpRegenPerSecond(run, config = GAME_CONFIG) {
-  const { hpRegenBasePerSecond, hpRegenPerBodyLevel, hpRegenPerBodyPrestigeLevel } = config.cultivation;
-  return hpRegenBasePerSecond + run.bodyLevel * hpRegenPerBodyLevel + run.bodyPrestigeLevel * hpRegenPerBodyPrestigeLevel;
+  const { hpRegenBasePerSecond, hpRegenPerBodyLevel } = config.cultivation;
+  return hpRegenBasePerSecond + run.bodyLevel * hpRegenPerBodyLevel;
 }
 
 export function getMaxKi(run, config = GAME_CONFIG) {
-  const { kiMaxBase, kiMaxPerSpiritLevel, kiMaxPerSpiritPrestigeLevel } = config.cultivation;
-  return kiMaxBase + run.spiritLevel * kiMaxPerSpiritLevel + run.spiritPrestigeLevel * kiMaxPerSpiritPrestigeLevel;
+  const { kiMaxBase, kiMaxPerSpiritLevel } = config.cultivation;
+  return kiMaxBase + run.spiritLevel * kiMaxPerSpiritLevel;
 }
 
 function buildTickResult(state, dtMs, events) {
@@ -389,7 +383,6 @@ function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
 
   const mindMultiplier = getMindAttackSpeedMultiplier({
     mindLevel: state.run.mindLevel,
-    mindPrestigeLevel: state.run.mindPrestigeLevel,
     config
   });
   const playerIntervalMs = Math.max(config.combat.minAttackIntervalMs, config.combat.playerAttackIntervalMs / mindMultiplier);
