@@ -8,6 +8,7 @@ import {
   getEnemyMaxHp,
   getHpRegenPerSecond,
   getMaxKi,
+  getMindAttackSpeedMultiplier,
   getMindEssenceThreshold,
   getPrestigeXpThreshold,
   getRunXpThreshold,
@@ -17,132 +18,205 @@ import {
 import { createRenderer } from './render.js';
 import { loadGame, saveGame } from './persistence.js';
 
-const canvas = document.getElementById('game');
-const renderer = createRenderer({ canvas, config: GAME_CONFIG });
+const UI = getUiElements();
+const renderer = createRenderer({ canvas: UI.canvas, config: GAME_CONFIG });
 
-const coreStatsEl = document.getElementById('core-stats');
-const tabContentEl = document.getElementById('tab-content');
-const cultivationTabEl = document.getElementById('cultivation-tab');
-const offlineSummaryEl = document.getElementById('offline-summary');
-const navButtons = [...document.querySelectorAll('.tab-nav button')];
-const modeButtons = [...document.querySelectorAll('#activity-switch button')];
-const cultivationModeEl = document.getElementById('cultivation-mode');
-
-let state = createInitialSimulationState(GAME_CONFIG);
-const loadedGame = loadGame(GAME_CONFIG);
-state = loadedGame.state;
-let selectedTab = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'character';
-state.activityMode = state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'battle';
-let lastFrameMs = performance.now();
-let accumulator = 0;
-let autosaveMs = 0;
-const battleFeed = [];
-
-renderOfflineSummary(loadedGame.offlineReport);
-
-navButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const target = button.dataset.tab;
-    if (target === 'cultivation' && !state.unlocks.cultivation) return;
-
-    selectedTab = target;
-    syncNavState();
-    renderPanel();
-  });
+const app = createGameApp({
+  config: GAME_CONFIG,
+  ui: UI,
+  renderer,
+  loadGame,
+  saveGame,
+  simulateTick,
+  buildPlayerStats
 });
 
-modeButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const target = button.dataset.mode;
-    if (target === 'cultivation' && !state.unlocks.cultivation) return;
+app.start();
 
-    state.activityMode = target;
-    syncNavState();
-    renderPanel();
+function createGameApp({ config, ui, renderer, loadGame: loadFn, saveGame: saveFn, simulateTick: tickFn, buildPlayerStats: buildStats }) {
+  let state = createInitialSimulationState(config);
+  const loaded = loadFn(config);
+  state = loaded.state;
+
+  let selectedTab = getInitialSelectedTab(state);
+  state.activityMode = getValidatedMode(state);
+
+  const battleFeed = createBattleFeed({ maxEntries: 24 });
+  const runtime = createRuntimeClock({ config });
+
+  bindNavigationHandlers({ ui, getState: () => state, onTabChange: handleTabChange, onModeChange: handleModeChange });
+  renderOfflineSummary({ ui, report: loaded.offlineReport });
+  syncUiState();
+  renderUi();
+
+  function start() {
+    window.addEventListener('beforeunload', () => saveFn(state));
+    requestAnimationFrame(frame);
+  }
+
+  function frame(nowMs) {
+    const frameMs = runtime.consumeFrame(nowMs);
+    stepSimulation({ frameMs });
+    autosave({ frameMs });
+    drawFrame({ frameMs });
+
+    syncUiState();
+    renderUi();
+    requestAnimationFrame(frame);
+  }
+
+  function stepSimulation({ frameMs }) {
+    runtime.accumulatorMs += frameMs;
+
+    while (runtime.accumulatorMs >= config.timing.simulationDtMs) {
+      state = tickFn(state, config.timing.simulationDtMs, config);
+      battleFeed.capture(state.combatLog);
+      renderer.ingestEvents(state.combatLog);
+      runtime.accumulatorMs -= config.timing.simulationDtMs;
+    }
+  }
+
+  function autosave({ frameMs }) {
+    runtime.autosaveMs += frameMs;
+    if (runtime.autosaveMs < config.timing.autosaveMs) return;
+    runtime.autosaveMs = 0;
+    saveFn(state);
+  }
+
+  function drawFrame({ frameMs }) {
+    renderer.render({
+      state: {
+        ...state,
+        playerStats: buildStats(state.run, state.persistent)
+      },
+      alpha: frameMs / config.timing.simulationDtMs
+    });
+  }
+
+  function handleTabChange(nextTab) {
+    if (nextTab === 'cultivation' && !state.unlocks.cultivation) return;
+    selectedTab = nextTab;
+    syncUiState();
+    renderUi();
+  }
+
+  function handleModeChange(nextMode) {
+    if (nextMode === 'cultivation' && !state.unlocks.cultivation) return;
+    state.activityMode = nextMode;
+    syncUiState();
+    renderUi();
+  }
+
+  function syncUiState() {
+    ui.cultivationTabButton.disabled = !state.unlocks.cultivation;
+    ui.cultivationModeButton.disabled = !state.unlocks.cultivation;
+
+    if (!state.unlocks.cultivation && selectedTab === 'cultivation') {
+      selectedTab = 'character';
+      state.activityMode = 'battle';
+    }
+
+    syncButtonCollection({ buttons: ui.navButtons, activeValue: selectedTab, datasetKey: 'tab' });
+    syncButtonCollection({ buttons: ui.modeButtons, activeValue: state.activityMode, datasetKey: 'mode' });
+  }
+
+  function renderUi() {
+    ui.coreStats.innerHTML = renderQuickCoreSummary({ state, config });
+
+    const tabMarkup = renderTabContent({
+      selectedTab,
+      state,
+      config,
+      battleFeed: battleFeed.lines,
+      onFlowSliderRender: bindFlowSlider
+    });
+
+    ui.tabContent.innerHTML = tabMarkup;
+  }
+
+  function bindFlowSlider(id, key) {
+    const slider = document.getElementById(id);
+    if (!slider) return;
+    slider.addEventListener('input', () => {
+      state.cultivation.flowRates[key] = Number(slider.value) / 100;
+    });
+  }
+
+  return { start };
+}
+
+function getUiElements() {
+  return {
+    canvas: document.getElementById('game'),
+    coreStats: document.getElementById('core-stats'),
+    tabContent: document.getElementById('tab-content'),
+    cultivationTabButton: document.getElementById('cultivation-tab'),
+    cultivationModeButton: document.getElementById('cultivation-mode'),
+    offlineSummary: document.getElementById('offline-summary'),
+    navButtons: [...document.querySelectorAll('.tab-nav button')],
+    modeButtons: [...document.querySelectorAll('#activity-switch button')]
+  };
+}
+
+function createRuntimeClock({ config }) {
+  return {
+    lastFrameMs: performance.now(),
+    accumulatorMs: 0,
+    autosaveMs: 0,
+    consumeFrame(nowMs) {
+      const frameMs = Math.min(100, nowMs - this.lastFrameMs);
+      this.lastFrameMs = nowMs;
+      return frameMs;
+    }
+  };
+}
+
+function createBattleFeed({ maxEntries }) {
+  const lines = [];
+
+  function capture(events) {
+    for (const event of events) {
+      if (event.type === 'playerHit') lines.unshift(`Dealt ${event.amount} · STR XP +${event.strengthXpGain}`);
+      if (event.type === 'enemyHit') lines.unshift(`Took ${event.amount} · END XP +${event.enduranceXpGain}`);
+      if (event.type === 'victory') lines.unshift(`Victory (${event.rarity}) · Essence +${event.reward}`);
+    }
+
+    lines.splice(maxEntries);
+  }
+
+  return { lines, capture };
+}
+
+function bindNavigationHandlers({ ui, getState, onTabChange, onModeChange }) {
+  ui.navButtons.forEach((button) => {
+    button.addEventListener('click', () => onTabChange(button.dataset.tab));
   });
-});
 
-syncNavState();
-renderPanel();
-requestAnimationFrame(frame);
-window.addEventListener('beforeunload', () => saveGame(state));
-
-function frame(nowMs) {
-  const frameMs = Math.min(100, nowMs - lastFrameMs);
-  lastFrameMs = nowMs;
-  accumulator += frameMs;
-
-  while (accumulator >= GAME_CONFIG.timing.simulationDtMs) {
-    state = simulateTick(state, GAME_CONFIG.timing.simulationDtMs, GAME_CONFIG);
-    captureCombatFeed(state.combatLog);
-    renderer.ingestEvents(state.combatLog);
-    accumulator -= GAME_CONFIG.timing.simulationDtMs;
-  }
-
-  autosaveMs += frameMs;
-  if (autosaveMs >= GAME_CONFIG.timing.autosaveMs) {
-    autosaveMs = 0;
-    saveGame(state);
-  }
-
-  renderer.render({
-    state: {
-      ...state,
-      playerStats: buildPlayerStats(state.run, state.persistent)
-    },
-    alpha: frameMs / GAME_CONFIG.timing.simulationDtMs
+  ui.modeButtons.forEach((button) => {
+    button.addEventListener('click', () => onModeChange(button.dataset.mode));
   });
 
-  syncNavState();
-  renderPanel();
-  requestAnimationFrame(frame);
+  const state = getState();
+  if (!state.unlocks.cultivation) return;
 }
 
-function syncNavState() {
-  cultivationTabEl.disabled = !state.unlocks.cultivation;
-  cultivationModeEl.disabled = !state.unlocks.cultivation;
-
-  if (!state.unlocks.cultivation && selectedTab === 'cultivation') {
-    selectedTab = 'character';
-    state.activityMode = 'battle';
-  }
-
-  for (const button of navButtons) {
-    button.classList.toggle('active', button.dataset.tab === selectedTab);
-  }
-
-  for (const button of modeButtons) {
-    button.classList.toggle('active', button.dataset.mode === state.activityMode);
+function syncButtonCollection({ buttons, activeValue, datasetKey }) {
+  for (const button of buttons) {
+    button.classList.toggle('active', button.dataset[datasetKey] === activeValue);
   }
 }
 
-function renderPanel() {
-  coreStatsEl.innerHTML = renderQuickCoreSummary();
-
-  if (selectedTab === 'battle') {
-    tabContentEl.innerHTML = renderBattleTab();
-    return;
-  }
-
-  if (selectedTab === 'cultivation') {
-    tabContentEl.innerHTML = renderCultivationTab();
-    bindFlowSlider('flow-body', 'body');
-    bindFlowSlider('flow-mind', 'mind');
-    bindFlowSlider('flow-spirit', 'spirit');
-    return;
-  }
-
-  if (selectedTab === 'stats') {
-    tabContentEl.innerHTML = renderStatsTab();
-    return;
-  }
-
-  tabContentEl.innerHTML = renderCharacterTab();
+function getInitialSelectedTab(state) {
+  return state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'character';
 }
 
-function renderQuickCoreSummary() {
-  const maxKi = getMaxKi(state.run, GAME_CONFIG);
-  const overallPower = computeOverallPower();
+function getValidatedMode(state) {
+  return state.activityMode === 'cultivation' && state.unlocks.cultivation ? 'cultivation' : 'battle';
+}
+
+function renderQuickCoreSummary({ state, config }) {
+  const maxKi = getMaxKi(state.run, config);
+  const overallPower = computeOverallPower(state);
 
   return `
     <div class="stat-line">Depth ${state.world.travelDepth} · Best ${state.world.bestDepth}</div>
@@ -152,10 +226,24 @@ function renderQuickCoreSummary() {
   `;
 }
 
-function renderCharacterTab() {
+function renderTabContent({ selectedTab, state, config, battleFeed, onFlowSliderRender }) {
+  if (selectedTab === 'battle') return renderBattleTab({ state, battleFeed });
+  if (selectedTab === 'cultivation') {
+    const markup = renderCultivationTab({ state, config });
+    onFlowSliderRender('flow-body', 'body');
+    onFlowSliderRender('flow-mind', 'mind');
+    onFlowSliderRender('flow-spirit', 'spirit');
+    return markup;
+  }
+
+  if (selectedTab === 'stats') return renderStatsTab({ state });
+  return renderCharacterTab({ state, config });
+}
+
+function renderCharacterTab({ state, config }) {
   const chainCount = state.enemy ? state.world.pendingEncounters + 1 : 0;
   const activity = state.enemy ? 'In combat' : state.activityMode === 'cultivation' ? 'Cultivating' : 'Exploring';
-  const battleStats = getCharacterBattleStats();
+  const battleStats = getCharacterBattleStats({ state, config });
 
   return `
     <h3>Character</h3>
@@ -164,8 +252,8 @@ function renderCharacterTab() {
       <div><span>Activity</span><strong>${activity}</strong></div>
       <div><span>Progress</span><strong>Depth ${state.world.travelDepth} / Best ${state.world.bestDepth}</strong></div>
       <div><span>Chain</span><strong>${chainCount}</strong></div>
-      <div><span>Overall Power</span><strong>${computeOverallPower().toLocaleString()}</strong></div>
-      <div><span>HP Regen</span><strong>${getHpRegenPerSecond(state.run, GAME_CONFIG).toFixed(2)}/s</strong></div>
+      <div><span>Overall Power</span><strong>${computeOverallPower(state).toLocaleString()}</strong></div>
+      <div><span>HP Regen</span><strong>${getHpRegenPerSecond(state.run, config).toFixed(2)}/s</strong></div>
       <div><span>Attack Power</span><strong>${battleStats.attackPower}</strong></div>
       <div><span>Attack Speed</span><strong>${battleStats.attacksPerSecond}/s</strong></div>
       <div><span>Max Health</span><strong>${battleStats.maxHealth}</strong></div>
@@ -174,15 +262,13 @@ function renderCharacterTab() {
   `;
 }
 
-function renderBattleTab() {
+function renderBattleTab({ state, battleFeed }) {
   const enemy = state.enemy;
   const enemyLabel = enemy
     ? `${enemy.rarity?.label ?? 'Unknown'} ${enemy.biome?.name ?? 'Unknown'} · HP ${Math.floor(enemy.hp)} / ${Math.floor(enemy.maxHp)} · ATK ${enemy.attack}`
     : 'No enemy';
 
-  const rows = battleFeed.length
-    ? battleFeed.map((line) => `<li>${line}</li>`).join('')
-    : '<li>Awaiting combat events.</li>';
+  const rows = battleFeed.length ? battleFeed.map((line) => `<li>${line}</li>`).join('') : '<li>Awaiting combat events.</li>';
 
   return `
     <h3>Battle</h3>
@@ -191,7 +277,7 @@ function renderBattleTab() {
   `;
 }
 
-function renderCultivationTab() {
+function renderCultivationTab({ state, config }) {
   return `
     <h3>Cultivation</h3>
     ${renderCultivationStat({
@@ -200,10 +286,11 @@ function renderCultivationTab() {
       level: state.run.strengthLevel,
       prestigeLevel: state.persistent.strengthPrestigeLevel,
       currentExp: state.run.strengthXp,
-      currentThreshold: getRunXpThreshold(state.run.strengthLevel, GAME_CONFIG),
+      currentThreshold: getRunXpThreshold(state.run.strengthLevel, config),
       prestigeExp: state.persistent.strengthPrestigeXp,
-      prestigeThreshold: getPrestigeXpThreshold(state.persistent.strengthPrestigeLevel, GAME_CONFIG),
-      showSlider: false
+      prestigeThreshold: getPrestigeXpThreshold(state.persistent.strengthPrestigeLevel, config),
+      showSlider: false,
+      flowRate: 0
     })}
     ${renderCultivationStat({
       key: 'endurance',
@@ -211,10 +298,11 @@ function renderCultivationTab() {
       level: state.run.enduranceLevel,
       prestigeLevel: state.persistent.endurancePrestigeLevel,
       currentExp: state.run.enduranceXp,
-      currentThreshold: getRunXpThreshold(state.run.enduranceLevel, GAME_CONFIG),
+      currentThreshold: getRunXpThreshold(state.run.enduranceLevel, config),
       prestigeExp: state.persistent.endurancePrestigeXp,
-      prestigeThreshold: getPrestigeXpThreshold(state.persistent.endurancePrestigeLevel, GAME_CONFIG),
-      showSlider: false
+      prestigeThreshold: getPrestigeXpThreshold(state.persistent.endurancePrestigeLevel, config),
+      showSlider: false,
+      flowRate: 0
     })}
     ${renderCultivationStat({
       key: 'body',
@@ -222,9 +310,10 @@ function renderCultivationTab() {
       level: state.run.bodyLevel,
       prestigeLevel: state.run.bodyPrestigeLevel,
       currentExp: state.run.bodyEssence,
-      currentThreshold: getBodyEssenceThreshold(state.run.bodyLevel, GAME_CONFIG),
+      currentThreshold: getBodyEssenceThreshold(state.run.bodyLevel, config),
       prestigeExp: state.run.bodyPrestigeXp,
-      prestigeThreshold: getPrestigeXpThreshold(state.run.bodyPrestigeLevel, GAME_CONFIG)
+      prestigeThreshold: getPrestigeXpThreshold(state.run.bodyPrestigeLevel, config),
+      flowRate: state.cultivation.flowRates.body
     })}
     ${renderCultivationStat({
       key: 'mind',
@@ -232,9 +321,10 @@ function renderCultivationTab() {
       level: state.run.mindLevel,
       prestigeLevel: state.run.mindPrestigeLevel,
       currentExp: state.run.mindEssence,
-      currentThreshold: getMindEssenceThreshold(state.run.mindLevel, GAME_CONFIG),
+      currentThreshold: getMindEssenceThreshold(state.run.mindLevel, config),
       prestigeExp: state.run.mindPrestigeXp,
-      prestigeThreshold: getPrestigeXpThreshold(state.run.mindPrestigeLevel, GAME_CONFIG)
+      prestigeThreshold: getPrestigeXpThreshold(state.run.mindPrestigeLevel, config),
+      flowRate: state.cultivation.flowRates.mind
     })}
     ${renderCultivationStat({
       key: 'spirit',
@@ -242,14 +332,15 @@ function renderCultivationTab() {
       level: state.run.spiritLevel,
       prestigeLevel: state.run.spiritPrestigeLevel,
       currentExp: state.run.spiritEssence,
-      currentThreshold: getSpiritEssenceThreshold(state.run.spiritLevel, GAME_CONFIG),
+      currentThreshold: getSpiritEssenceThreshold(state.run.spiritLevel, config),
       prestigeExp: state.run.spiritPrestigeXp,
-      prestigeThreshold: getPrestigeXpThreshold(state.run.spiritPrestigeLevel, GAME_CONFIG)
+      prestigeThreshold: getPrestigeXpThreshold(state.run.spiritPrestigeLevel, config),
+      flowRate: state.cultivation.flowRates.spirit
     })}
   `;
 }
 
-function renderCultivationStat({ key, label, level, prestigeLevel, currentExp, currentThreshold, prestigeExp, prestigeThreshold, showSlider = true }) {
+function renderCultivationStat({ key, label, level, prestigeLevel, currentExp, currentThreshold, prestigeExp, prestigeThreshold, flowRate, showSlider = true }) {
   const currentRatio = getProgressRatio(currentExp, currentThreshold);
   const prestigeRatio = getProgressRatio(prestigeExp, prestigeThreshold);
 
@@ -261,12 +352,12 @@ function renderCultivationStat({ key, label, level, prestigeLevel, currentExp, c
         <span class="overlay" style="width:${(prestigeRatio * 100).toFixed(1)}%"></span>
       </div>
       <div class="progress-meta">${Math.floor(currentExp)} / ${currentThreshold} · Prestige ${Math.floor(prestigeExp)} / ${prestigeThreshold}</div>
-      ${showSlider ? `<input id="flow-${key}" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(state.cultivation.flowRates[key] * 100)}" />` : '<div class="progress-meta">Leveled through combat only.</div>'}
+      ${showSlider ? `<input id="flow-${key}" class="cultivate-slider" type="range" min="0" max="100" value="${Math.round(flowRate * 100)}" />` : '<div class="progress-meta">Leveled through combat only.</div>'}
     </div>
   `;
 }
 
-function renderStatsTab() {
+function renderStatsTab({ state }) {
   const stats = state.statistics;
 
   return `
@@ -286,31 +377,29 @@ function renderStatsTab() {
   `;
 }
 
-function getCharacterBattleStats() {
-  const mindMultiplier = Math.min(
-    GAME_CONFIG.cultivation.maxAttackSpeedMultiplier,
-    1 + Math.log1p(Math.max(0, state.run.mindLevel)) * GAME_CONFIG.cultivation.mindSpeedLogFactor
-  );
-  const attackIntervalMs = Math.max(GAME_CONFIG.combat.minAttackIntervalMs, GAME_CONFIG.combat.playerAttackIntervalMs / mindMultiplier);
+function getCharacterBattleStats({ state, config }) {
+  const mindMultiplier = getMindAttackSpeedMultiplier({ mindLevel: state.run.mindLevel, config });
+  const attackIntervalMs = Math.max(config.combat.minAttackIntervalMs, config.combat.playerAttackIntervalMs / mindMultiplier);
   const previewDepth = Math.max(1, state.world.travelDepth);
   const { encounterDistance } = getEncounterDistanceForDepth({
     playerHex: state.battlePositions.playerHex,
     moveDirectionIndex: state.world.moveDirectionIndex,
-    config: GAME_CONFIG
+    config
   });
-  const enemyAttack = state.enemy?.attack ?? getEnemyAttack({ distance: encounterDistance, currentDepth: previewDepth, config: GAME_CONFIG }, GAME_CONFIG);
-  const enemyHealth = state.enemy?.maxHp ?? getEnemyMaxHp({ distance: encounterDistance, currentDepth: previewDepth, config: GAME_CONFIG }, GAME_CONFIG);
+
+  const enemyAttack = state.enemy?.attack ?? getEnemyAttack({ distance: encounterDistance, currentDepth: previewDepth, config }, config);
+  const enemyHealth = state.enemy?.maxHp ?? getEnemyMaxHp({ distance: encounterDistance, currentDepth: previewDepth, config }, config);
 
   return {
-    attackPower: Math.max(1, Math.floor(GAME_CONFIG.combat.playerBaseAttack + (state.run.strengthLevel - 1) * GAME_CONFIG.combat.strengthAttackPerLevel)),
+    attackPower: Math.max(1, Math.floor(config.combat.playerBaseAttack + (state.run.strengthLevel - 1) * config.combat.strengthAttackPerLevel)),
     attacksPerSecond: (1000 / attackIntervalMs).toFixed(2),
-    maxHealth: Math.floor(GAME_CONFIG.combat.playerBaseHp + (state.run.enduranceLevel - 1) * GAME_CONFIG.combat.enduranceHpPerLevel),
+    maxHealth: Math.floor(config.combat.playerBaseHp + (state.run.enduranceLevel - 1) * config.combat.enduranceHpPerLevel),
     enemyAttack,
     enemyHealth
   };
 }
 
-function computeOverallPower() {
+function computeOverallPower(state) {
   const base =
     state.run.strengthLevel * 1.4 +
     state.run.enduranceLevel * 1.3 +
@@ -331,43 +420,18 @@ function computeOverallPower() {
   return Math.floor(base * prestigeMultiplier * progressMultiplier * 100);
 }
 
-function captureCombatFeed(events) {
-  for (const event of events) {
-    if (event.type === 'playerHit') {
-      battleFeed.unshift(`Dealt ${event.amount} · STR XP +${event.strengthXpGain}`);
-    }
-
-    if (event.type === 'enemyHit') {
-      battleFeed.unshift(`Took ${event.amount} · END XP +${event.enduranceXpGain}`);
-    }
-
-    if (event.type === 'victory') {
-      battleFeed.unshift(`Victory (${event.rarity}) · Essence +${event.reward}`);
-    }
-  }
-
-  battleFeed.splice(24);
-}
-
 function getProgressRatio(current, threshold) {
   return Math.max(0, Math.min(1, current / Math.max(1, threshold)));
 }
 
-function bindFlowSlider(id, key) {
-  const slider = document.getElementById(id);
-  slider.addEventListener('input', () => {
-    state.cultivation.flowRates[key] = Number(slider.value) / 100;
-  });
-}
-
-function renderOfflineSummary(report) {
+function renderOfflineSummary({ ui, report }) {
   if (!report) {
-    offlineSummaryEl.innerHTML = '<span>No offline gains yet.</span>';
+    ui.offlineSummary.innerHTML = '<span>No offline gains yet.</span>';
     return;
   }
 
   const minutesAway = Math.floor(report.awaySeconds / 60);
-  offlineSummaryEl.innerHTML = `
+  ui.offlineSummary.innerHTML = `
     <span>Away ${minutesAway}m · +${report.passiveEssenceGain} Essence</span>
     <span>Flowed ${report.flowEssenceSpent} Essence.</span>
   `;
