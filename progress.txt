@@ -207,3 +207,8 @@
 - Updated reveal event emission to mark successful chance spawns explicitly and kept miss-streak behavior for reveal rolls.
 - Updated `src/main.js` enemy display/preview logic: battle enemy label now includes ATK, and character-tab enemy power preview now uses shared encounter distance context while showing exact active-enemy stats when in combat.
 - Ran lightweight validation checks (`node --check` suite + targeted simulation smoke script) and attempted screenshot capture via browser tool (Playwright failed with `ERR_EMPTY_RESPONSE` in this environment).
+2026-02-19 (bugfix: enemy stats use current depth + softer scaling)
+- Checked `progress.txt` before starting this task and fixed early-depth enemy scaling/playability.
+- Updated `src/simulation.js` enemy HP/ATK formulas to scale from `currentDepth` (the player's active travel depth) instead of encounter spawn distance from origin, preventing depth-0/1 fights from inheriting distant spawn-position power.
+- Retuned `src/config.js` enemy scaling constants (HP/ATK exponents + log/depth factors) downward to make early encounters beatable while preserving gradual growth at deeper travel depths.
+- Ran lightweight validation checks (`node --check` + targeted Node depth-scaling smoke script) to verify syntax and monotonic, reduced enemy growth.

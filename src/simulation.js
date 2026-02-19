@@ -283,14 +283,14 @@ export function getMaxHp(playerStats, config = GAME_CONFIG) {
 
 export function getEnemyMaxHp(distance, config = GAME_CONFIG) {
   const depthContext = normalizeDepthContext(distance, config);
-  const logDepth = getLogDepthScale(depthContext.distance);
+  const logDepth = getLogDepthScale(depthContext.currentDepth);
   const hpScale = 1 + logDepth * config.combat.enemyHpLogFactor + depthContext.currentDepth * config.combat.enemyHpDepthFactor;
   return Math.floor(config.combat.enemyHpBase * Math.pow(hpScale, config.combat.enemyHpExp));
 }
 
 export function getEnemyAttack(distance, config = GAME_CONFIG) {
   const depthContext = normalizeDepthContext(distance, config);
-  const logDepth = getLogDepthScale(depthContext.distance);
+  const logDepth = getLogDepthScale(depthContext.currentDepth);
   const attackRamp = Math.pow(
     logDepth * config.combat.enemyAttackLogFactor + depthContext.currentDepth * config.combat.enemyAttackDepthFactor,
     config.combat.enemyAttackExp
