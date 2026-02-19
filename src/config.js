@@ -30,9 +30,11 @@ export const GAME_CONFIG = {
     enemyHpBase: 30,
     enemyHpExp: 1.35,
     enemyHpLogFactor: 1.7,
+    enemyHpDepthFactor: 0.045,
     enemyAttackBase: 4,
     enemyAttackExp: 1.18,
     enemyAttackLogFactor: 2.1,
+    enemyAttackDepthFactor: 0.03,
     minDamage: 1,
     biomeModifiers: {
       IronFlats: { hp: 1.1, attack: 0.95 },
