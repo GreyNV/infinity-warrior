@@ -191,3 +191,8 @@
 - Added persistent `world.bestDepth` tracking and updated `src/persistence.js` offline essence bonus + `src/main.js` overall power/progress displays to use depth metrics instead of floors.
 - Renamed the Persistent tab to Character (in `index.html`/`src/main.js`) and added a battle-attribute summary block (attack power, attack speed, max health, and enemy power-at-depth preview).
 - Ran lightweight validation checks (`node --check` suite + targeted simulation smoke script). Attempted screenshot capture via browser tool, but Playwright Chromium crashed in this environment.
+2026-02-19 (enemy power log-depth scaling)
+- Checked `progress.txt` before starting this task and updated enemy power scaling per request.
+- Updated `src/simulation.js` enemy HP/ATK growth formulas to scale from `log1p(depth)` instead of direct power on raw depth, with new combat tuning knobs for HP/ATK log factors.
+- Updated `src/config.js` with `enemyHpLogFactor` and `enemyAttackLogFactor` constants and updated `src/main.js` character preview to use shared simulation helpers for enemy power-at-depth display.
+- Ran lightweight validation checks (`node --check` suite + targeted Node monotonic/log-scaling smoke script).

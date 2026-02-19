@@ -266,12 +266,19 @@ export function getMaxHp(playerStats, config = GAME_CONFIG) {
 }
 
 export function getEnemyMaxHp(distance, config = GAME_CONFIG) {
-  return Math.floor(config.combat.enemyHpBase * Math.pow(Math.max(1, distance), config.combat.enemyHpExp));
+  const logDepth = getLogDepthScale(distance);
+  const hpScale = 1 + logDepth * config.combat.enemyHpLogFactor;
+  return Math.floor(config.combat.enemyHpBase * Math.pow(hpScale, config.combat.enemyHpExp));
 }
 
 export function getEnemyAttack(distance, config = GAME_CONFIG) {
-  const distanceRamp = Math.pow(Math.max(0, distance - 1), config.combat.enemyAttackExp);
-  return Math.floor(config.combat.enemyAttackBase + distanceRamp);
+  const logDepth = getLogDepthScale(distance);
+  const attackRamp = Math.pow(logDepth * config.combat.enemyAttackLogFactor, config.combat.enemyAttackExp);
+  return Math.floor(config.combat.enemyAttackBase + attackRamp);
+}
+
+function getLogDepthScale(distance) {
+  return Math.log1p(Math.max(0, distance));
 }
 
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {

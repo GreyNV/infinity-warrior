@@ -3,6 +3,8 @@ import {
   buildPlayerStats,
   createInitialSimulationState,
   getBodyEssenceThreshold,
+  getEnemyAttack,
+  getEnemyMaxHp,
   getHpRegenPerSecond,
   getMaxKi,
   getMindEssenceThreshold,
@@ -290,8 +292,8 @@ function getCharacterBattleStats() {
   );
   const attackIntervalMs = Math.max(GAME_CONFIG.combat.minAttackIntervalMs, GAME_CONFIG.combat.playerAttackIntervalMs / mindMultiplier);
   const depthScale = Math.max(1, state.world.travelDepth);
-  const enemyAttack = Math.floor(GAME_CONFIG.combat.enemyAttackBase + Math.pow(Math.max(0, depthScale - 1), GAME_CONFIG.combat.enemyAttackExp));
-  const enemyHealth = Math.floor(GAME_CONFIG.combat.enemyHpBase * Math.pow(depthScale, GAME_CONFIG.combat.enemyHpExp));
+  const enemyAttack = getEnemyAttack(depthScale, GAME_CONFIG);
+  const enemyHealth = getEnemyMaxHp(depthScale, GAME_CONFIG);
 
   return {
     attackPower: Math.max(1, Math.floor(GAME_CONFIG.combat.playerBaseAttack + (state.run.strengthLevel - 1) * GAME_CONFIG.combat.strengthAttackPerLevel)),
