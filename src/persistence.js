@@ -48,12 +48,12 @@ export function applyOfflineProgress({ state, elapsedMs, config = GAME_CONFIG })
 
   const secondsAway = cappedMs / 1000;
   const baseEssence = config.persistence.offlineEssencePerSecondBase;
-  const floorBonus = state.bestFloor * config.persistence.offlineEssencePerBestFloor;
+  const distanceBonus = state.world.bestDepth * config.persistence.offlineEssencePerBestFloor;
   const prestigeBonus =
     state.persistent.strengthPrestigeLevel * config.persistence.offlineEssencePerPrestigeLevel +
     state.persistent.endurancePrestigeLevel * config.persistence.offlineEssencePerPrestigeLevel;
 
-  const passiveEssenceGain = Math.floor(secondsAway * (baseEssence + floorBonus + prestigeBonus));
+  const passiveEssenceGain = Math.floor(secondsAway * (baseEssence + distanceBonus + prestigeBonus));
   state.resources.essence += passiveEssenceGain;
 
   let flowEssenceSpent = 0;

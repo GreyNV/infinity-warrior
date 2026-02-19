@@ -16,8 +16,6 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
   run.hp = getMaxHp(playerStats, config);
 
   return {
-    floor: 1,
-    bestFloor: 1,
     elapsedMs: 0,
     resources: { essence: 0 },
     unlocks: { cultivation: false },
@@ -27,6 +25,7 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
     cultivation: { flowRates: { body: 0.34, mind: 0.33, spirit: 0.33 } },
     world: {
       travelDepth: 0,
+      bestDepth: 0,
       revealedHexes: 0,
       pendingEncounters: 0,
       moveDirectionIndex: 0,
@@ -93,14 +92,14 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
   return buildTickResult(next, dtMs, events);
 }
 
-export function createEnemyForFloor(floor, config = GAME_CONFIG, options = {}) {
+export function createEnemyForDistance(distance, config = GAME_CONFIG, options = {}) {
   const { biome = getWorldRegion({ hex: options.hex ?? { q: 0, r: 0 }, config }), rarity = rollRarity(config) } = options;
   const biomeModifier = config.combat.biomeModifiers[biome.key] ?? { hp: 1, attack: 1 };
-  const maxHp = Math.max(1, Math.floor(getEnemyMaxHp(floor, config) * biomeModifier.hp * rarity.hp));
-  const attack = Math.max(1, Math.floor(getEnemyAttack(floor, config) * biomeModifier.attack * rarity.attack));
+  const maxHp = Math.max(1, Math.floor(getEnemyMaxHp(distance, config) * biomeModifier.hp * rarity.hp));
+  const attack = Math.max(1, Math.floor(getEnemyAttack(distance, config) * biomeModifier.attack * rarity.attack));
 
   return {
-    floor,
+    distance,
     hp: maxHp,
     maxHp,
     attack,
@@ -166,9 +165,9 @@ export function getPrestigeXpThreshold(level, config = GAME_CONFIG) {
   return Math.floor(config.progression.prestigeXpBase * Math.pow(level + 1, config.progression.prestigeXpExp));
 }
 
-export function getEssenceReward({ floor, rarity, config = GAME_CONFIG }) {
+export function getEssenceReward({ distance, rarity, config = GAME_CONFIG }) {
   const rarityMultiplier = rarity?.essence ?? 1;
-  return Math.floor(config.rewards.essenceBase * Math.pow(floor, config.rewards.essenceExp) * rarityMultiplier);
+  return Math.floor(config.rewards.essenceBase * Math.pow(Math.max(1, distance), config.rewards.essenceExp) * rarityMultiplier);
 }
 
 export function resolveLevelUps({ run, persistent, statistics, config = GAME_CONFIG, events = [] }) {
@@ -190,11 +189,9 @@ export function resolveLevelUps({ run, persistent, statistics, config = GAME_CON
 export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   if (!state.enemy) return;
 
-  const reward = getEssenceReward({ floor: state.floor, rarity: state.enemy.rarity, config });
+  const reward = getEssenceReward({ distance: state.world.travelDepth, rarity: state.enemy.rarity, config });
   const defeatedEnemy = state.enemy;
   state.resources.essence += reward;
-  state.floor += 1;
-  state.bestFloor = Math.max(state.bestFloor, state.floor);
 
   if (state.world.pendingEncounters > 0) {
     state.world.pendingEncounters -= 1;
@@ -208,7 +205,7 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
 
   const playerStats = buildPlayerStats(state.run, state.persistent);
   state.run.hp = Math.min(getMaxHp(playerStats, config), state.run.hp + getHpRegenPerSecond(state.run, config));
-  events.push({ type: 'victory', reward, rarity: defeatedEnemy?.rarity?.label ?? 'Unknown', nextFloor: state.floor });
+  events.push({ type: 'victory', reward, rarity: defeatedEnemy?.rarity?.label ?? 'Unknown', depth: state.world.travelDepth });
 
   if (!defeatedEnemy) return;
   state.statistics.totalEnemiesDefeated += 1;
@@ -228,7 +225,6 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
     spiritXp: state.run.spiritPrestigeXp
   };
 
-  state.floor = 1;
   state.statistics.totalDeaths += 1;
   state.world.travelDepth = 0;
   state.world.pendingEncounters = 0;
@@ -251,7 +247,7 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   state.combatTimers.playerMs = 0;
   state.combatTimers.enemyMs = 0;
 
-  events.push({ type: 'defeat', resetFloor: state.floor });
+  events.push({ type: 'defeat' });
 }
 
 export function getEncounterOutcome(state) {
@@ -269,13 +265,13 @@ export function getMaxHp(playerStats, config = GAME_CONFIG) {
   return Math.floor(playerBaseHp + (playerStats.enduranceLevel - 1) * enduranceHpPerLevel);
 }
 
-export function getEnemyMaxHp(floor, config = GAME_CONFIG) {
-  return Math.floor(config.combat.enemyHpBase * Math.pow(floor, config.combat.enemyHpExp));
+export function getEnemyMaxHp(distance, config = GAME_CONFIG) {
+  return Math.floor(config.combat.enemyHpBase * Math.pow(Math.max(1, distance), config.combat.enemyHpExp));
 }
 
-export function getEnemyAttack(floor, config = GAME_CONFIG) {
-  const floorRamp = Math.pow(Math.max(0, floor - 1), config.combat.enemyAttackExp);
-  return Math.floor(config.combat.enemyAttackBase + floorRamp);
+export function getEnemyAttack(distance, config = GAME_CONFIG) {
+  const distanceRamp = Math.pow(Math.max(0, distance - 1), config.combat.enemyAttackExp);
+  return Math.floor(config.combat.enemyAttackBase + distanceRamp);
 }
 
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
@@ -497,11 +493,10 @@ function movePlayerForward({ state }) {
 function revealNextHex({ state, config, events }) {
   state.world.revealedHexes += 1;
   state.world.travelDepth = getHexDistance(state.battlePositions.playerHex, { q: 0, r: 0 });
+  state.world.bestDepth = Math.max(state.world.bestDepth, state.world.travelDepth);
 
   const spawnChance = getSpawnChance({ missStreak: state.world.spawnMissStreak, config });
-  const guaranteedSpawn = state.world.spawnMissStreak >= config.world.revealSpawnGuaranteeMisses;
-
-  if (!guaranteedSpawn && Math.random() > spawnChance) {
+  if (Math.random() > spawnChance) {
     state.world.spawnMissStreak += 1;
     events.push({ type: 'revealHex', spawned: false, depth: state.world.travelDepth, spawnChance });
     return;
@@ -511,7 +506,7 @@ function revealNextHex({ state, config, events }) {
 
   const additionalEncounters = getConsecutiveEncounterCount({ travelDepth: state.world.travelDepth, config });
   state.world.pendingEncounters = Math.max(0, additionalEncounters - 1);
-  spawnEncounterFromReveal({ state, config, events, reason: guaranteedSpawn ? 'guarantee' : 'reveal' });
+  spawnEncounterFromReveal({ state, config, events, reason: 'reveal' });
 }
 
 function getSpawnChance({ missStreak, config }) {
@@ -535,7 +530,8 @@ function spawnEncounterFromReveal({ state, config, events, reason }) {
 
   state.battlePositions.enemyHex = enemyHex;
   const biome = getWorldRegion({ hex: enemyHex, config });
-  state.enemy = createEnemyForFloor(state.floor, config, { biome, hex: enemyHex });
+  const encounterDistance = Math.max(1, getHexDistance(enemyHex, { q: 0, r: 0 }));
+  state.enemy = createEnemyForDistance(encounterDistance, config, { biome, hex: enemyHex });
   state.combatTimers.playerMs = 0;
   state.combatTimers.enemyMs = 0;
 

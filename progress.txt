@@ -184,3 +184,10 @@
 - Updated `src/simulation.js` so cultivation prestige levels no longer directly modify base stat outputs: Body prestige no longer adds direct HP regen, Mind prestige no longer adds direct attack-speed multiplier, and Spirit prestige no longer adds direct max Ki.
 - Retuned cultivation level requirement curves in `src/config.js`: lowered base essence requirements for Body/Mind/Spirit to make early run progression more noticeable, while increasing exponent scaling for steeper later-level growth.
 - Ran lightweight validation checks (`node --check` suite + targeted threshold/base-stat smoke script) to confirm syntax and intended behavior.
+2026-02-19 (distance-scaling pass: floor removal + character summary)
+- Checked `progress.txt` before starting this task and implemented the requested floor-removal update.
+- Updated `src/simulation.js` to remove floor-driven progression: enemy HP/ATK and essence rewards now scale with encounter distance/depth, and encounter chain count remains depth-based.
+- Removed guaranteed encounter spawns so reveal spawns remain chance-based (no absolute guarantee), while still using miss-streak chance ramping.
+- Added persistent `world.bestDepth` tracking and updated `src/persistence.js` offline essence bonus + `src/main.js` overall power/progress displays to use depth metrics instead of floors.
+- Renamed the Persistent tab to Character (in `index.html`/`src/main.js`) and added a battle-attribute summary block (attack power, attack speed, max health, and enemy power-at-depth preview).
+- Ran lightweight validation checks (`node --check` suite + targeted simulation smoke script). Attempted screenshot capture via browser tool, but Playwright Chromium crashed in this environment.
