@@ -223,3 +223,9 @@
 - Updated `src/simulation.js` so STR/END prestige XP gain is now directly tied to run XP gain (same amount per event), and switched run/prestige XP threshold formulas to percent-growth curves matching the new balance targets.
 - Introduced a lightweight pub-sub event bus in `src/main.js` and routed simulation tick events through it so battle feed updates and renderer event ingestion consume a shared event stream.
 - Ran lightweight validation checks (`node --check` suite + targeted Node smoke scripts) for syntax, XP threshold scaling, and STR prestige XP parity with STR run XP gain.
+2026-02-19 (cultivation prestige XP parity + scaling alignment)
+- Checked `progress.txt` before starting this task and applied the requested prestige-XP logic alignment to cultivation attributes.
+- Updated `src/simulation.js` cultivation flow so Body/Mind/Spirit prestige XP gains now match their corresponding boosted run XP gains exactly (same parity model used for STR/END), and removed obsolete percentage-based prestige conversion helper usage.
+- Updated `src/persistence.js` offline cultivation distribution to use the same run/prestige XP parity logic for Body/Mind/Spirit gains.
+- Updated `src/config.js` cultivation prestige XP boost-per-level to +10% so cultivation attribute scaling aligns with recent prestige XP tuning.
+- Ran lightweight validation checks (`node --check` suite + targeted Node parity smoke scripts for active and offline cultivation XP gain behavior).

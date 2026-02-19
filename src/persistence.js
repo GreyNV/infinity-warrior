@@ -85,18 +85,17 @@ function distributeCultivationEssence({ state, essence, flowRates, config }) {
   const mindEssence = essence * flowRates.mind;
   const spiritEssence = essence * flowRates.spirit;
 
-  state.run.bodyEssence += toCultivationExp({ allocatedEssence: bodyEssence, prestigeLevel: state.run.bodyPrestigeLevel, config });
-  state.run.mindEssence += toCultivationExp({ allocatedEssence: mindEssence, prestigeLevel: state.run.mindPrestigeLevel, config });
-  state.run.spiritEssence += toCultivationExp({ allocatedEssence: spiritEssence, prestigeLevel: state.run.spiritPrestigeLevel, config });
+  const bodyXpGain = toCultivationExp({ allocatedEssence: bodyEssence, prestigeLevel: state.run.bodyPrestigeLevel, config });
+  const mindXpGain = toCultivationExp({ allocatedEssence: mindEssence, prestigeLevel: state.run.mindPrestigeLevel, config });
+  const spiritXpGain = toCultivationExp({ allocatedEssence: spiritEssence, prestigeLevel: state.run.spiritPrestigeLevel, config });
 
-  state.run.bodyPrestigeXp += toCultivationPrestigeXp({ essence: bodyEssence, config });
-  state.run.mindPrestigeXp += toCultivationPrestigeXp({ essence: mindEssence, config });
-  state.run.spiritPrestigeXp += toCultivationPrestigeXp({ essence: spiritEssence, config });
-}
+  state.run.bodyEssence += bodyXpGain;
+  state.run.mindEssence += mindXpGain;
+  state.run.spiritEssence += spiritXpGain;
 
-function toCultivationPrestigeXp({ essence, config }) {
-  if (essence <= 0) return 0;
-  return Math.max(1, Math.floor(essence * config.cultivation.cultivationPrestigeGain));
+  state.run.bodyPrestigeXp += bodyXpGain;
+  state.run.mindPrestigeXp += mindXpGain;
+  state.run.spiritPrestigeXp += spiritXpGain;
 }
 
 function toCultivationExp({ allocatedEssence, prestigeLevel, config }) {
