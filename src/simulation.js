@@ -95,8 +95,9 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
 export function createEnemyForDistance(distance, config = GAME_CONFIG, options = {}) {
   const { biome = getWorldRegion({ hex: options.hex ?? { q: 0, r: 0 }, config }), rarity = rollRarity(config) } = options;
   const biomeModifier = config.combat.biomeModifiers[biome.key] ?? { hp: 1, attack: 1 };
-  const maxHp = Math.max(1, Math.floor(getEnemyMaxHp(distance, config) * biomeModifier.hp * rarity.hp));
-  const attack = Math.max(1, Math.floor(getEnemyAttack(distance, config) * biomeModifier.attack * rarity.attack));
+  const currentDepth = Math.max(1, options.currentDepth ?? distance);
+  const maxHp = Math.max(1, Math.floor(getEnemyMaxHp({ distance, currentDepth, config }) * biomeModifier.hp * rarity.hp));
+  const attack = Math.max(1, Math.floor(getEnemyAttack({ distance, currentDepth, config }) * biomeModifier.attack * rarity.attack));
 
   return {
     distance,
@@ -266,15 +267,32 @@ export function getMaxHp(playerStats, config = GAME_CONFIG) {
 }
 
 export function getEnemyMaxHp(distance, config = GAME_CONFIG) {
-  const logDepth = getLogDepthScale(distance);
-  const hpScale = 1 + logDepth * config.combat.enemyHpLogFactor;
+  const depthContext = normalizeDepthContext(distance, config);
+  const logDepth = getLogDepthScale(depthContext.distance);
+  const hpScale = 1 + logDepth * config.combat.enemyHpLogFactor + depthContext.currentDepth * config.combat.enemyHpDepthFactor;
   return Math.floor(config.combat.enemyHpBase * Math.pow(hpScale, config.combat.enemyHpExp));
 }
 
 export function getEnemyAttack(distance, config = GAME_CONFIG) {
-  const logDepth = getLogDepthScale(distance);
-  const attackRamp = Math.pow(logDepth * config.combat.enemyAttackLogFactor, config.combat.enemyAttackExp);
+  const depthContext = normalizeDepthContext(distance, config);
+  const logDepth = getLogDepthScale(depthContext.distance);
+  const attackRamp = Math.pow(
+    logDepth * config.combat.enemyAttackLogFactor + depthContext.currentDepth * config.combat.enemyAttackDepthFactor,
+    config.combat.enemyAttackExp
+  );
   return Math.floor(config.combat.enemyAttackBase + attackRamp);
+}
+
+function normalizeDepthContext(distanceOrContext, fallbackConfig) {
+  if (typeof distanceOrContext === 'number') {
+    return { distance: Math.max(1, distanceOrContext), currentDepth: Math.max(1, distanceOrContext), config: fallbackConfig };
+  }
+
+  return {
+    distance: Math.max(1, distanceOrContext.distance ?? distanceOrContext.currentDepth ?? 1),
+    currentDepth: Math.max(1, distanceOrContext.currentDepth ?? distanceOrContext.distance ?? 1),
+    config: distanceOrContext.config ?? fallbackConfig
+  };
 }
 
 function getLogDepthScale(distance) {
@@ -538,7 +556,11 @@ function spawnEncounterFromReveal({ state, config, events, reason }) {
   state.battlePositions.enemyHex = enemyHex;
   const biome = getWorldRegion({ hex: enemyHex, config });
   const encounterDistance = Math.max(1, getHexDistance(enemyHex, { q: 0, r: 0 }));
-  state.enemy = createEnemyForDistance(encounterDistance, config, { biome, hex: enemyHex });
+  state.enemy = createEnemyForDistance(encounterDistance, config, {
+    biome,
+    hex: enemyHex,
+    currentDepth: Math.max(1, state.world.travelDepth)
+  });
   state.combatTimers.playerMs = 0;
   state.combatTimers.enemyMs = 0;
 

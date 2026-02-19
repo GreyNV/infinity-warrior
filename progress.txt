@@ -196,3 +196,8 @@
 - Updated `src/simulation.js` enemy HP/ATK growth formulas to scale from `log1p(depth)` instead of direct power on raw depth, with new combat tuning knobs for HP/ATK log factors.
 - Updated `src/config.js` with `enemyHpLogFactor` and `enemyAttackLogFactor` constants and updated `src/main.js` character preview to use shared simulation helpers for enemy power-at-depth display.
 - Ran lightweight validation checks (`node --check` suite + targeted Node monotonic/log-scaling smoke script).
+2026-02-19 (enemy spawn stat scaling: log-depth + current-depth blend)
+- Checked `progress.txt` before starting this update and applied the requested enemy spawn stat scaling adjustment.
+- Updated `src/simulation.js` enemy creation so spawn-time HP/ATK now blend both log-scaled encounter distance and current travel depth, and wired reveal spawns to pass current depth explicitly.
+- Updated `src/config.js` with new tuning knobs (`enemyHpDepthFactor`, `enemyAttackDepthFactor`) so the linear current-depth contribution is configurable.
+- Ran lightweight validation checks (`node --check` suite + targeted Node smoke test) to verify stats increase with both log depth and current depth.
