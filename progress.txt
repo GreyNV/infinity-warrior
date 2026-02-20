@@ -229,3 +229,8 @@
 - Updated `src/persistence.js` offline cultivation distribution to use the same run/prestige XP parity logic for Body/Mind/Spirit gains.
 - Updated `src/config.js` cultivation prestige XP boost-per-level to +10% so cultivation attribute scaling aligns with recent prestige XP tuning.
 - Ran lightweight validation checks (`node --check` suite + targeted Node parity smoke scripts for active and offline cultivation XP gain behavior).
+2026-02-19 (codebase review + refactoring roadmap)
+- Checked `progress.txt` before starting this planning task and reviewed root `AGENTS.md` instructions.
+- Reviewed current architecture files (`src/main.js`, `src/simulation.js`, `src/persistence.js`, `src/render.js`, `README.md`) to identify coupling and maintainability risks.
+- Added `refactoring_plan.md` with a phased refactor roadmap (simulation module split, selector layer, UI composition split, persistence migrations, deterministic test harness, and performance safety pass) plus AGENTS-based handoff context.
+- Ran lightweight validation checks (`node --check` on main simulation/persistence/render entry modules).
