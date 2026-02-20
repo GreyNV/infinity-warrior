@@ -1,13 +1,38 @@
 import { GAME_CONFIG } from './config.js';
-
-const HEX_DIRECTIONS = [
-  { q: 1, r: 0 },
-  { q: -1, r: 0 },
-  { q: 0, r: 1 },
-  { q: 0, r: -1 },
-  { q: 1, r: -1 },
-  { q: -1, r: 1 }
-];
+import {
+  computeIncomingDamage,
+  computePlayerDamage,
+  createEnemyForDistance,
+  getEncounterOutcome,
+  getMaxHp,
+  isCombatOver
+} from './sim/combat.js';
+import {
+  computeEnduranceXpGain,
+  computeStrengthXpGain,
+  getAgilityAttackSpeedMultiplier,
+  getAgilityEssenceThreshold,
+  getBodyEssenceThreshold,
+  getEssenceReward,
+  getHpRegenPerSecond,
+  getMaxKi,
+  getMindAttackSpeedMultiplier,
+  getMindEssenceThreshold,
+  getPrestigeXpThreshold,
+  getRunXpThreshold,
+  getSpiritEssenceThreshold,
+  normalizeFlowRates,
+  resolveLevelUps,
+  toCultivationExp,
+  updateHighestLevels
+} from './sim/progression.js';
+import {
+  createInitialBattlePositions,
+  getEncounterDistanceForDepth,
+  isWithinEffectiveRange,
+  tickMovement,
+  trySpawnEncounter
+} from './sim/world.js';
 
 export function createInitialSimulationState(config = GAME_CONFIG) {
   const run = createBaselineRunState();
@@ -39,44 +64,6 @@ export function createInitialSimulationState(config = GAME_CONFIG) {
   };
 }
 
-function createBaselineStatistics() {
-  return {
-    totalDeaths: 0,
-    totalEnemiesDefeated: 0,
-    enemiesDefeatedByRarity: {
-      common: 0,
-      uncommon: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0
-    },
-    totalLevelsGained: {
-      strength: 0,
-      endurance: 0,
-      body: 0,
-      mind: 0,
-      spirit: 0,
-      strengthPrestige: 0,
-      endurancePrestige: 0,
-      bodyPrestige: 0,
-      mindPrestige: 0,
-      spiritPrestige: 0
-    },
-    highestLevels: {
-      strength: 1,
-      endurance: 1,
-      body: 0,
-      mind: 0,
-      spirit: 0,
-      strengthPrestige: 0,
-      endurancePrestige: 0,
-      bodyPrestige: 0,
-      mindPrestige: 0,
-      spiritPrestige: 0
-    }
-  };
-}
-
 export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, config = GAME_CONFIG) {
   const next = structuredClone(state);
   const events = [];
@@ -89,45 +76,10 @@ export function simulateTick(state, dtMs = GAME_CONFIG.timing.simulationDtMs, co
   resolveLevelUps({ run: next.run, persistent: next.persistent, statistics: next.statistics, config, events });
   updateHighestLevels(next.statistics, next.run, next.persistent);
 
-  return buildTickResult(next, dtMs, events);
-}
-
-export function createEnemyForDistance(distance, config = GAME_CONFIG, options = {}) {
-  const { biome = getWorldRegion({ hex: options.hex ?? { q: 0, r: 0 }, config }), rarity = rollRarity(config) } = options;
-  const biomeModifier = config.combat.biomeModifiers[biome.key] ?? { hp: 1, attack: 1 };
-  const currentDepth = Math.max(1, options.currentDepth ?? distance);
-  const maxHp = Math.max(1, Math.floor(getEnemyMaxHp({ distance, currentDepth, config }) * biomeModifier.hp * rarity.hp));
-  const attack = Math.max(1, Math.floor(getEnemyAttack({ distance, currentDepth, config }) * biomeModifier.attack * rarity.attack));
-
   return {
-    distance,
-    hp: maxHp,
-    maxHp,
-    attack,
-    biome,
-    rarity
-  };
-}
-
-export function getEncounterDistanceForDepth({ playerHex, moveDirectionIndex, config = GAME_CONFIG }) {
-  const direction = HEX_DIRECTIONS[moveDirectionIndex % HEX_DIRECTIONS.length];
-  const spawnGap = Math.max(config.combat.effectiveRangeHex + 1, config.combat.startingHexGap);
-  const enemyHex = {
-    q: playerHex.q + direction.q * spawnGap,
-    r: playerHex.r + direction.r * spawnGap
-  };
-
-  return {
-    enemyHex,
-    encounterDistance: Math.max(1, getHexDistance(enemyHex, { q: 0, r: 0 }))
-  };
-}
-
-export function createInitialBattlePositions(config = GAME_CONFIG) {
-  return {
-    playerHex: { q: 0, r: 0 },
-    enemyHex: null,
-    movementMs: 0
+    ...next,
+    elapsedMs: next.elapsedMs + dtMs,
+    combatLog: events
   };
 }
 
@@ -172,35 +124,6 @@ export function buildPlayerStats(run, persistent) {
   };
 }
 
-export function getRunXpThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.progression.runXpBase * Math.pow(1 + config.progression.runXpGrowthRate, Math.max(0, level - 1)));
-}
-
-export function getPrestigeXpThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.progression.prestigeXpBase * Math.pow(1 + config.progression.prestigeXpGrowthRate, Math.max(0, level)));
-}
-
-export function getEssenceReward({ distance, rarity, config = GAME_CONFIG }) {
-  const rarityMultiplier = rarity?.essence ?? 1;
-  return Math.floor(config.rewards.essenceBase * Math.pow(Math.max(1, distance), config.rewards.essenceExp) * rarityMultiplier);
-}
-
-export function resolveLevelUps({ run, persistent, statistics, config = GAME_CONFIG, events = [] }) {
-  processStrengthRunLevelUps({ run, statistics, config, events });
-  processEnduranceRunLevelUps({ run, statistics, config, events });
-  processStrengthPrestigeLevelUps({ persistent, statistics, config, events });
-  processEndurancePrestigeLevelUps({ persistent, statistics, config, events });
-  processBodyCultivationLevelUps({ run, statistics, config, events });
-  processBodyCultivationPrestigeLevelUps({ run, statistics, config, events });
-  processMindCultivationLevelUps({ run, statistics, config, events });
-  processMindCultivationPrestigeLevelUps({ run, statistics, config, events });
-  processSpiritCultivationLevelUps({ run, statistics, config, events });
-  processSpiritCultivationPrestigeLevelUps({ run, statistics, config, events });
-
-  const playerStats = buildPlayerStats(run, persistent);
-  run.hp = Math.min(run.hp, getMaxHp(playerStats, config));
-}
-
 export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
   if (!state.enemy) return;
 
@@ -210,7 +133,7 @@ export function applyVictory({ state, config = GAME_CONFIG, events = [] }) {
 
   if (state.world.pendingEncounters > 0) {
     state.world.pendingEncounters -= 1;
-    const didSpawn = trySpawnEncounter({ state, config, events, reason: 'chain', spawnChance: getSpawnChance({ missStreak: 0, config }) });
+    const didSpawn = trySpawnEncounter({ state, config, events, reason: 'chain', spawnChance: getChainSpawnChance(config) });
     if (!didSpawn) state.world.pendingEncounters = 0;
   } else {
     state.enemy = null;
@@ -266,174 +189,89 @@ export function applyDefeatReset({ state, config = GAME_CONFIG, events = [] }) {
   events.push({ type: 'defeat' });
 }
 
-export function getEncounterOutcome(state) {
-  if (state.run.hp <= 0) return 'defeat';
-  if (state.enemy && state.enemy.hp <= 0) return 'victory';
-  return null;
-}
-
-export function isCombatOver(state) {
-  return state.run.hp <= 0 || (state.enemy ? state.enemy.hp <= 0 : false);
-}
-
-export function getMaxHp(playerStats, config = GAME_CONFIG) {
-  const { playerBaseHp, enduranceHpPerLevel } = config.combat;
-  return Math.floor(playerBaseHp + (playerStats.enduranceLevel - 1) * enduranceHpPerLevel);
-}
-
-export function getEnemyMaxHp(distance, config = GAME_CONFIG) {
-  const depthContext = normalizeDepthContext(distance, config);
-  const logDepth = getLogDepthScale(depthContext.currentDepth);
-  const hpScale = 1 + logDepth * config.combat.enemyHpLogFactor + depthContext.currentDepth * config.combat.enemyHpDepthFactor;
-  return Math.floor(config.combat.enemyHpBase * Math.pow(hpScale, config.combat.enemyHpExp));
-}
-
-export function getEnemyAttack(distance, config = GAME_CONFIG) {
-  const depthContext = normalizeDepthContext(distance, config);
-  const logDepth = getLogDepthScale(depthContext.currentDepth);
-  const attackRamp = Math.pow(
-    logDepth * config.combat.enemyAttackLogFactor + depthContext.currentDepth * config.combat.enemyAttackDepthFactor,
-    config.combat.enemyAttackExp
-  );
-  return Math.floor(config.combat.enemyAttackBase + attackRamp);
-}
-
-function normalizeDepthContext(distanceOrContext, fallbackConfig) {
-  if (typeof distanceOrContext === 'number') {
-    return { distance: Math.max(1, distanceOrContext), currentDepth: Math.max(1, distanceOrContext), config: fallbackConfig };
-  }
-
+function createBaselineStatistics() {
   return {
-    distance: Math.max(1, distanceOrContext.distance ?? distanceOrContext.currentDepth ?? 1),
-    currentDepth: Math.max(1, distanceOrContext.currentDepth ?? distanceOrContext.distance ?? 1),
-    config: distanceOrContext.config ?? fallbackConfig
+    totalDeaths: 0,
+    totalEnemiesDefeated: 0,
+    enemiesDefeatedByRarity: {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0
+    },
+    totalLevelsGained: {
+      strength: 0,
+      endurance: 0,
+      body: 0,
+      mind: 0,
+      spirit: 0,
+      strengthPrestige: 0,
+      endurancePrestige: 0,
+      bodyPrestige: 0,
+      mindPrestige: 0,
+      spiritPrestige: 0
+    },
+    highestLevels: {
+      strength: 1,
+      endurance: 1,
+      body: 0,
+      mind: 0,
+      spirit: 0,
+      strengthPrestige: 0,
+      endurancePrestige: 0,
+      bodyPrestige: 0,
+      mindPrestige: 0,
+      spiritPrestige: 0
+    }
   };
-}
-
-function getLogDepthScale(distance) {
-  return Math.log1p(Math.max(0, distance));
-}
-
-export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
-  const { playerBaseAttack, strengthAttackPerLevel, minDamage } = config.combat;
-  const rawDamage = playerBaseAttack + (playerStats.strengthLevel - 1) * strengthAttackPerLevel;
-
-  return Math.max(minDamage, Math.floor(rawDamage));
-}
-
-export function computeIncomingDamage({ enemyAttack, config = GAME_CONFIG }) {
-  return Math.max(config.combat.minDamage, Math.floor(enemyAttack));
-}
-
-export function computeStrengthXpGain(damageDealt, playerStats, config = GAME_CONFIG) {
-  const { strengthXpPerDamage, strengthXpBoostPerStrengthPrestigeLevel } = config.progression;
-  const prestigeMultiplier = 1 + playerStats.strengthPrestigeLevel * strengthXpBoostPerStrengthPrestigeLevel;
-  return Math.floor(damageDealt * strengthXpPerDamage * prestigeMultiplier);
-}
-
-export function computeEnduranceXpGain(damageTaken, playerStats, config = GAME_CONFIG) {
-  const { enduranceXpPerDamage, enduranceXpBoostPerEndurancePrestigeLevel } = config.progression;
-  const prestigeMultiplier = 1 + playerStats.endurancePrestigeLevel * enduranceXpBoostPerEndurancePrestigeLevel;
-  return Math.floor(damageTaken * enduranceXpPerDamage * prestigeMultiplier);
-}
-
-export function getAgilityEssenceThreshold(level, config = GAME_CONFIG) {
-  return getMindEssenceThreshold(level, config);
-}
-
-export function getAgilityAttackSpeedMultiplier({ agilityLevel, config = GAME_CONFIG }) {
-  return getMindAttackSpeedMultiplier({ mindLevel: agilityLevel, config });
-}
-
-export function getBodyEssenceThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.cultivation.bodyEssenceBase * Math.pow(level + 1, config.cultivation.bodyEssenceExp));
-}
-
-export function getMindEssenceThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.cultivation.mindEssenceBase * Math.pow(level + 1, config.cultivation.mindEssenceExp));
-}
-
-export function getSpiritEssenceThreshold(level, config = GAME_CONFIG) {
-  return Math.floor(config.cultivation.spiritEssenceBase * Math.pow(level + 1, config.cultivation.spiritEssenceExp));
-}
-
-export function getMindAttackSpeedMultiplier({ mindLevel, config = GAME_CONFIG }) {
-  const totalMindLevel = Math.max(0, mindLevel);
-  const rawMultiplier = 1 + Math.log1p(totalMindLevel) * config.cultivation.mindSpeedLogFactor;
-  return Math.min(config.cultivation.maxAttackSpeedMultiplier, rawMultiplier);
-}
-
-export function getHpRegenPerSecond(run, config = GAME_CONFIG) {
-  const { hpRegenBasePerSecond, hpRegenPerBodyLevel } = config.cultivation;
-  return hpRegenBasePerSecond + run.bodyLevel * hpRegenPerBodyLevel;
-}
-
-export function getMaxKi(run, config = GAME_CONFIG) {
-  const { kiMaxBase, kiMaxPerSpiritLevel } = config.cultivation;
-  return kiMaxBase + run.spiritLevel * kiMaxPerSpiritLevel;
-}
-
-function buildTickResult(state, dtMs, events) {
-  return {
-    ...state,
-    elapsedMs: state.elapsedMs + dtMs,
-    combatLog: events
-  };
-}
-
-function applyPlayerAttack({ state, playerStats, config, events }) {
-  if (!state.enemy) return;
-  const playerDamage = computePlayerDamage(playerStats, config);
-  const strengthXpGain = computeStrengthXpGain(playerDamage, playerStats, config);
-  const strengthPrestigeXpGain = strengthXpGain;
-
-  state.run.strengthXp += strengthXpGain;
-  state.persistent.strengthPrestigeXp += strengthPrestigeXpGain;
-  state.enemy.hp = Math.max(0, state.enemy.hp - playerDamage);
-
-  events.push({ type: 'playerHit', amount: playerDamage, strengthXpGain, strengthPrestigeXpGain });
-}
-
-function applyEnemyAttack({ state, playerStats, config, events }) {
-  if (!state.enemy) return;
-  const enemyDamage = computeIncomingDamage({ enemyAttack: state.enemy.attack, config });
-  const enduranceXpGain = computeEnduranceXpGain(enemyDamage, playerStats, config);
-  const endurancePrestigeXpGain = enduranceXpGain;
-
-  state.run.enduranceXp += enduranceXpGain;
-  state.persistent.endurancePrestigeXp += endurancePrestigeXpGain;
-  state.run.hp = Math.max(0, state.run.hp - enemyDamage);
-
-  events.push({ type: 'enemyHit', amount: enemyDamage, enduranceXpGain, endurancePrestigeXpGain });
 }
 
 function tickCombatIntervals({ state, dtMs, playerStats, config, events }) {
-  if (!state.enemy || !isWithinEffectiveRange(state, config)) {
-    state.combatTimers.playerMs = 0;
-    state.combatTimers.enemyMs = 0;
-    return;
-  }
+  if (!state.enemy) return;
+  if (!isWithinEffectiveRange(state, config)) return;
 
   state.combatTimers.playerMs += dtMs;
   state.combatTimers.enemyMs += dtMs;
 
-  const mindMultiplier = getMindAttackSpeedMultiplier({
-    mindLevel: state.run.mindLevel,
-    config
-  });
+  const mindMultiplier = getMindAttackSpeedMultiplier({ mindLevel: state.run.mindLevel, config });
   const playerIntervalMs = Math.max(config.combat.minAttackIntervalMs, config.combat.playerAttackIntervalMs / mindMultiplier);
 
-  if (consumeInterval({ timerMs: state.combatTimers.playerMs, intervalMs: playerIntervalMs })) {
+  if (state.combatTimers.playerMs >= playerIntervalMs) {
     state.combatTimers.playerMs -= playerIntervalMs;
     applyPlayerAttack({ state, playerStats, config, events });
   }
 
   if (!state.enemy || state.enemy.hp <= 0) return;
 
-  if (consumeInterval({ timerMs: state.combatTimers.enemyMs, intervalMs: config.combat.enemyAttackIntervalMs })) {
+  if (state.combatTimers.enemyMs >= config.combat.enemyAttackIntervalMs) {
     state.combatTimers.enemyMs -= config.combat.enemyAttackIntervalMs;
     applyEnemyAttack({ state, playerStats, config, events });
   }
+}
+
+function applyPlayerAttack({ state, playerStats, config, events }) {
+  if (!state.enemy) return;
+  const playerDamage = computePlayerDamage(playerStats, config);
+  const strengthXpGain = computeStrengthXpGain(playerDamage, playerStats, config);
+
+  state.run.strengthXp += strengthXpGain;
+  state.persistent.strengthPrestigeXp += strengthXpGain;
+  state.enemy.hp = Math.max(0, state.enemy.hp - playerDamage);
+
+  events.push({ type: 'playerHit', amount: playerDamage, strengthXpGain, strengthPrestigeXpGain: strengthXpGain });
+}
+
+function applyEnemyAttack({ state, playerStats, config, events }) {
+  if (!state.enemy) return;
+  const enemyDamage = computeIncomingDamage({ enemyAttack: state.enemy.attack, config });
+  const enduranceXpGain = computeEnduranceXpGain(enemyDamage, playerStats, config);
+
+  state.run.enduranceXp += enduranceXpGain;
+  state.persistent.endurancePrestigeXp += enduranceXpGain;
+  state.run.hp = Math.max(0, state.run.hp - enemyDamage);
+
+  events.push({ type: 'enemyHit', amount: enemyDamage, enduranceXpGain, endurancePrestigeXpGain: enduranceXpGain });
 }
 
 function processCultivationFlow({ state, dtMs, config }) {
@@ -455,13 +293,9 @@ function processCultivationFlow({ state, dtMs, config }) {
   const spentEssence = Math.min(state.resources.essence, totalRequestedEssence);
   state.resources.essence -= spentEssence;
 
-  const bodyEssence = spentEssence * flowRates.body;
-  const mindEssence = spentEssence * flowRates.mind;
-  const spiritEssence = spentEssence * flowRates.spirit;
-
-  const bodyXpGain = toCultivationExp({ allocatedEssence: bodyEssence, prestigeLevel: state.run.bodyPrestigeLevel, config });
-  const mindXpGain = toCultivationExp({ allocatedEssence: mindEssence, prestigeLevel: state.run.mindPrestigeLevel, config });
-  const spiritXpGain = toCultivationExp({ allocatedEssence: spiritEssence, prestigeLevel: state.run.spiritPrestigeLevel, config });
+  const bodyXpGain = toCultivationExp({ allocatedEssence: spentEssence * flowRates.body, prestigeLevel: state.run.bodyPrestigeLevel, config });
+  const mindXpGain = toCultivationExp({ allocatedEssence: spentEssence * flowRates.mind, prestigeLevel: state.run.mindPrestigeLevel, config });
+  const spiritXpGain = toCultivationExp({ allocatedEssence: spentEssence * flowRates.spirit, prestigeLevel: state.run.spiritPrestigeLevel, config });
 
   state.run.bodyEssence += bodyXpGain;
   state.run.mindEssence += mindXpGain;
@@ -471,317 +305,38 @@ function processCultivationFlow({ state, dtMs, config }) {
   state.run.spiritPrestigeXp += spiritXpGain;
 }
 
-function normalizeFlowRates(flowRates = {}) {
-  const body = Math.max(0, Number(flowRates.body) || 0);
-  const mind = Math.max(0, Number(flowRates.mind) || 0);
-  const spirit = Math.max(0, Number(flowRates.spirit) || 0);
-  const total = body + mind + spirit;
-  if (total <= 0) return { body: 1 / 3, mind: 1 / 3, spirit: 1 / 3 };
-
-  return {
-    body: body / total,
-    mind: mind / total,
-    spirit: spirit / total
-  };
-}
-
-function consumeInterval({ timerMs, intervalMs }) {
-  return timerMs >= intervalMs;
-}
-
-function tickMovement({ state, dtMs, config, events }) {
-  if (state.activityMode === 'cultivation' && !state.enemy) return;
-
-  if (state.activityMode === 'cultivation' && state.enemy) {
-    state.battlePositions.movementMs += dtMs;
-
-    while (consumeInterval({ timerMs: state.battlePositions.movementMs, intervalMs: config.combat.movementIntervalMs })) {
-      state.battlePositions.movementMs -= config.combat.movementIntervalMs;
-      advanceTowardsRange({ battlePositions: state.battlePositions, effectiveRangeHex: config.combat.effectiveRangeHex });
-    }
-
-    return;
-  }
-
-  state.battlePositions.movementMs += dtMs;
-
-  while (consumeInterval({ timerMs: state.battlePositions.movementMs, intervalMs: config.combat.movementIntervalMs })) {
-    state.battlePositions.movementMs -= config.combat.movementIntervalMs;
-
-    if (state.enemy) {
-      advanceTowardsRange({ battlePositions: state.battlePositions, effectiveRangeHex: config.combat.effectiveRangeHex });
-      continue;
-    }
-
-    movePlayerForward({ state });
-    revealNextHex({ state, config, events });
-  }
-}
-
-function toCultivationExp({ allocatedEssence, prestigeLevel, config }) {
-  if (allocatedEssence <= 0) return 0;
-  const multiplier = 1 + Math.max(0, prestigeLevel) * config.cultivation.essenceXpBoostPerPrestigeLevel;
-  return allocatedEssence * multiplier;
-}
-
-function movePlayerForward({ state }) {
-  const direction = HEX_DIRECTIONS[state.world.moveDirectionIndex % HEX_DIRECTIONS.length];
-  state.battlePositions.playerHex.q += direction.q;
-  state.battlePositions.playerHex.r += direction.r;
-
-  if (Math.random() < 0.2) {
-    state.world.moveDirectionIndex = (state.world.moveDirectionIndex + 1 + Math.floor(Math.random() * 2)) % HEX_DIRECTIONS.length;
-  }
-}
-
-function revealNextHex({ state, config, events }) {
-  state.world.revealedHexes += 1;
-  state.world.travelDepth = getHexDistance(state.battlePositions.playerHex, { q: 0, r: 0 });
-  state.world.bestDepth = Math.max(state.world.bestDepth, state.world.travelDepth);
-
-  const spawnChance = getSpawnChance({ missStreak: state.world.spawnMissStreak, config });
-  const didSpawn = trySpawnEncounter({ state, config, events, reason: 'reveal', spawnChance });
-  if (!didSpawn) {
-    state.world.spawnMissStreak += 1;
-    events.push({ type: 'revealHex', spawned: false, depth: state.world.travelDepth, spawnChance });
-    return;
-  }
-
-  state.world.spawnMissStreak = 0;
-
-  const additionalEncounters = getConsecutiveEncounterCount({ travelDepth: state.world.travelDepth, config });
-  state.world.pendingEncounters = Math.max(0, additionalEncounters - 1);
-  events.push({ type: 'revealHex', spawned: true, depth: state.world.travelDepth, spawnChance });
-}
-
-function getSpawnChance({ missStreak, config }) {
-  const chance = config.world.revealSpawnChanceBase + missStreak * config.world.revealSpawnChanceMissIncrement;
-  return Math.max(0, Math.min(config.world.revealSpawnChanceCap, chance));
-}
-
-function getConsecutiveEncounterCount({ travelDepth, config }) {
-  const stackBonus = Math.floor(travelDepth / Math.max(1, config.world.consecutiveEnemiesDepthStep));
-  return config.world.consecutiveEnemiesBase + stackBonus;
-}
-
-function spawnEncounterFromReveal({ state, config, events, reason }) {
-  const { enemyHex, encounterDistance } = getEncounterDistanceForDepth({
-    playerHex: state.battlePositions.playerHex,
-    moveDirectionIndex: state.world.moveDirectionIndex,
-    config
-  });
-
-  state.battlePositions.enemyHex = enemyHex;
-  const biome = getWorldRegion({ hex: enemyHex, config });
-  state.enemy = createEnemyForDistance(encounterDistance, config, {
-    biome,
-    hex: enemyHex,
-    currentDepth: Math.max(1, state.world.travelDepth)
-  });
-  state.combatTimers.playerMs = 0;
-  state.combatTimers.enemyMs = 0;
-
-  events.push({
-    type: 'spawnEnemy',
-    reason,
-    depth: state.world.travelDepth,
-    pendingEncounters: state.world.pendingEncounters,
-    rarity: state.enemy.rarity.key,
-    biome: biome.name
-  });
-}
-
-function trySpawnEncounter({ state, config, events, reason, spawnChance }) {
-  if (Math.random() > spawnChance) {
-    if (reason === 'chain') {
-      events.push({ type: 'chainSpawnMiss', depth: state.world.travelDepth, spawnChance });
-    }
-    return false;
-  }
-
-  spawnEncounterFromReveal({ state, config, events, reason });
-  return true;
-}
-
-function rollRarity(config) {
-  const roll = Math.random();
-  let cumulative = 0;
-
-  for (const tier of config.combat.rarityTiers) {
-    cumulative += tier.chance;
-    if (roll <= cumulative) return tier;
-  }
-
-  return config.combat.rarityTiers.at(-1);
-}
-
-function getWorldRegion({ hex, config }) {
-  const biomes = config.world?.biomes ?? [];
-  if (!biomes.length) return { key: 'Unknown', name: 'Unknown', enemyColor: '#f97316' };
-
-  const bandSize = Math.max(1, config.world?.biomeBandSize ?? 8);
-  const distance = getHexDistance(hex, { q: 0, r: 0 });
-  const directionalShift = Math.floor((hex.q * 2 + hex.r) / bandSize);
-  const bandIndex = Math.floor(distance / bandSize) + directionalShift;
-  const normalizedIndex = ((bandIndex % biomes.length) + biomes.length) % biomes.length;
-
-  return biomes[normalizedIndex];
-}
-
-function advanceTowardsRange({ battlePositions, effectiveRangeHex }) {
-  if (!battlePositions.enemyHex) return;
-  if (getHexDistance(battlePositions.playerHex, battlePositions.enemyHex) <= effectiveRangeHex) return;
-
-  battlePositions.playerHex = stepHexTowards({ from: battlePositions.playerHex, to: battlePositions.enemyHex });
-  if (getHexDistance(battlePositions.playerHex, battlePositions.enemyHex) <= effectiveRangeHex) return;
-
-  battlePositions.enemyHex = stepHexTowards({ from: battlePositions.enemyHex, to: battlePositions.playerHex });
-}
-
-function stepHexTowards({ from, to }) {
-  let best = from;
-  let bestDistance = getHexDistance(from, to);
-
-  for (const dir of HEX_DIRECTIONS) {
-    const candidate = { q: from.q + dir.q, r: from.r + dir.r };
-    const distance = getHexDistance(candidate, to);
-    if (distance < bestDistance) {
-      best = candidate;
-      bestDistance = distance;
-    }
-  }
-
-  return best;
-}
-
-function isWithinEffectiveRange(state, config) {
-  return state.enemy && state.battlePositions.enemyHex
-    ? getHexDistance(state.battlePositions.playerHex, state.battlePositions.enemyHex) <= config.combat.effectiveRangeHex
-    : false;
-}
-
-function getHexDistance(from, to) {
-  return (Math.abs(from.q - to.q) + Math.abs(from.r - to.r) + Math.abs(from.q + from.r - to.q - to.r)) / 2;
-}
-
-
-function processStrengthRunLevelUps({ run, statistics, config, events }) {
-  while (run.strengthXp >= getRunXpThreshold(run.strengthLevel, config)) {
-    const requiredXp = getRunXpThreshold(run.strengthLevel, config);
-    run.strengthXp -= requiredXp;
-    run.strengthLevel += 1;
-    if (statistics) statistics.totalLevelsGained.strength += 1;
-    events.push({ type: 'strengthLevelUp', level: run.strengthLevel });
-  }
-}
-
-function processEnduranceRunLevelUps({ run, statistics, config, events }) {
-  while (run.enduranceXp >= getRunXpThreshold(run.enduranceLevel, config)) {
-    const requiredXp = getRunXpThreshold(run.enduranceLevel, config);
-    run.enduranceXp -= requiredXp;
-    run.enduranceLevel += 1;
-    if (statistics) statistics.totalLevelsGained.endurance += 1;
-    events.push({ type: 'enduranceLevelUp', level: run.enduranceLevel });
-  }
-}
-
-function processStrengthPrestigeLevelUps({ persistent, statistics, config, events }) {
-  while (persistent.strengthPrestigeXp >= getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(persistent.strengthPrestigeLevel, config);
-    persistent.strengthPrestigeXp -= requiredXp;
-    persistent.strengthPrestigeLevel += 1;
-    if (statistics) statistics.totalLevelsGained.strengthPrestige += 1;
-    events.push({ type: 'strengthPrestigeLevelUp', level: persistent.strengthPrestigeLevel });
-  }
-}
-
-function processEndurancePrestigeLevelUps({ persistent, statistics, config, events }) {
-  while (persistent.endurancePrestigeXp >= getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(persistent.endurancePrestigeLevel, config);
-    persistent.endurancePrestigeXp -= requiredXp;
-    persistent.endurancePrestigeLevel += 1;
-    if (statistics) statistics.totalLevelsGained.endurancePrestige += 1;
-    events.push({ type: 'endurancePrestigeLevelUp', level: persistent.endurancePrestigeLevel });
-  }
-}
-
-function processBodyCultivationLevelUps({ run, statistics, config, events }) {
-  while (run.bodyEssence >= getBodyEssenceThreshold(run.bodyLevel, config)) {
-    const requiredEssence = getBodyEssenceThreshold(run.bodyLevel, config);
-    run.bodyEssence -= requiredEssence;
-    run.bodyLevel += 1;
-    if (statistics) statistics.totalLevelsGained.body += 1;
-    events.push({ type: 'bodyLevelUp', level: run.bodyLevel });
-  }
-}
-
-function processMindCultivationLevelUps({ run, statistics, config, events }) {
-  while (run.mindEssence >= getMindEssenceThreshold(run.mindLevel, config)) {
-    const requiredEssence = getMindEssenceThreshold(run.mindLevel, config);
-    run.mindEssence -= requiredEssence;
-    run.mindLevel += 1;
-    if (statistics) statistics.totalLevelsGained.mind += 1;
-    events.push({ type: 'mindLevelUp', level: run.mindLevel });
-  }
-}
-
-function processSpiritCultivationLevelUps({ run, statistics, config, events }) {
-  while (run.spiritEssence >= getSpiritEssenceThreshold(run.spiritLevel, config)) {
-    const requiredEssence = getSpiritEssenceThreshold(run.spiritLevel, config);
-    run.spiritEssence -= requiredEssence;
-    run.spiritLevel += 1;
-    if (statistics) statistics.totalLevelsGained.spirit += 1;
-    events.push({ type: 'spiritLevelUp', level: run.spiritLevel });
-  }
-}
-
-function processBodyCultivationPrestigeLevelUps({ run, statistics, config, events }) {
-  while (run.bodyPrestigeXp >= getPrestigeXpThreshold(run.bodyPrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(run.bodyPrestigeLevel, config);
-    run.bodyPrestigeXp -= requiredXp;
-    run.bodyPrestigeLevel += 1;
-    if (statistics) statistics.totalLevelsGained.bodyPrestige += 1;
-    events.push({ type: 'bodyPrestigeLevelUp', level: run.bodyPrestigeLevel });
-  }
-}
-
-function processMindCultivationPrestigeLevelUps({ run, statistics, config, events }) {
-  while (run.mindPrestigeXp >= getPrestigeXpThreshold(run.mindPrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(run.mindPrestigeLevel, config);
-    run.mindPrestigeXp -= requiredXp;
-    run.mindPrestigeLevel += 1;
-    if (statistics) statistics.totalLevelsGained.mindPrestige += 1;
-    events.push({ type: 'mindPrestigeLevelUp', level: run.mindPrestigeLevel });
-  }
-}
-
-function processSpiritCultivationPrestigeLevelUps({ run, statistics, config, events }) {
-  while (run.spiritPrestigeXp >= getPrestigeXpThreshold(run.spiritPrestigeLevel, config)) {
-    const requiredXp = getPrestigeXpThreshold(run.spiritPrestigeLevel, config);
-    run.spiritPrestigeXp -= requiredXp;
-    run.spiritPrestigeLevel += 1;
-    if (statistics) statistics.totalLevelsGained.spiritPrestige += 1;
-    events.push({ type: 'spiritPrestigeLevelUp', level: run.spiritPrestigeLevel });
-  }
-}
-
-
-function updateHighestLevels(statistics, run, persistent) {
-  if (!statistics) return;
-  statistics.highestLevels.strength = Math.max(statistics.highestLevels.strength, run.strengthLevel);
-  statistics.highestLevels.endurance = Math.max(statistics.highestLevels.endurance, run.enduranceLevel);
-  statistics.highestLevels.body = Math.max(statistics.highestLevels.body, run.bodyLevel);
-  statistics.highestLevels.mind = Math.max(statistics.highestLevels.mind, run.mindLevel);
-  statistics.highestLevels.spirit = Math.max(statistics.highestLevels.spirit, run.spiritLevel);
-  statistics.highestLevels.strengthPrestige = Math.max(statistics.highestLevels.strengthPrestige, persistent.strengthPrestigeLevel);
-  statistics.highestLevels.endurancePrestige = Math.max(statistics.highestLevels.endurancePrestige, persistent.endurancePrestigeLevel);
-  statistics.highestLevels.bodyPrestige = Math.max(statistics.highestLevels.bodyPrestige, run.bodyPrestigeLevel);
-  statistics.highestLevels.mindPrestige = Math.max(statistics.highestLevels.mindPrestige, run.mindPrestigeLevel);
-  statistics.highestLevels.spiritPrestige = Math.max(statistics.highestLevels.spiritPrestige, run.spiritPrestigeLevel);
-}
-
 function resolveEncounterOutcome({ state, config, events }) {
   const outcome = getEncounterOutcome(state);
   if (outcome === 'victory') applyVictory({ state, config, events });
   if (outcome === 'defeat') applyDefeatReset({ state, config, events });
 }
+
+function getChainSpawnChance(config) {
+  return Math.max(0, Math.min(config.world.revealSpawnChanceCap, config.world.revealSpawnChanceBase));
+}
+
+export {
+  createEnemyForDistance,
+  getEncounterDistanceForDepth,
+  getEncounterOutcome,
+  isCombatOver,
+  getMaxHp,
+  getRunXpThreshold,
+  getPrestigeXpThreshold,
+  getEssenceReward,
+  getEnemyMaxHp,
+  getEnemyAttack,
+  computePlayerDamage,
+  computeIncomingDamage,
+  computeStrengthXpGain,
+  computeEnduranceXpGain,
+  getAgilityEssenceThreshold,
+  getAgilityAttackSpeedMultiplier,
+  getBodyEssenceThreshold,
+  getMindEssenceThreshold,
+  getSpiritEssenceThreshold,
+  getMindAttackSpeedMultiplier,
+  getHpRegenPerSecond,
+  getMaxKi,
+  resolveLevelUps
+} from './sim/index.js';
