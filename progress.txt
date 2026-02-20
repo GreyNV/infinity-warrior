@@ -234,3 +234,8 @@
 - Reviewed current architecture files (`src/main.js`, `src/simulation.js`, `src/persistence.js`, `src/render.js`, `README.md`) to identify coupling and maintainability risks.
 - Added `refactoring_plan.md` with a phased refactor roadmap (simulation module split, selector layer, UI composition split, persistence migrations, deterministic test harness, and performance safety pass) plus AGENTS-based handoff context.
 - Ran lightweight validation checks (`node --check` on main simulation/persistence/render entry modules).
+2026-02-20 (refactor plan execution: simulation module extraction)
+- Checked `progress.txt` before starting and acted on `refactoring_plan.md` Milestone A / Iteration 1 by extracting simulation helper domains.
+- Added `src/sim/combat.js`, `src/sim/progression.js`, and `src/sim/world.js` to isolate combat math, progression/cultivation formulas, and world movement/spawn logic into single-purpose modules.
+- Added `src/sim/index.js` and updated `src/simulation.js` into a thinner orchestration layer that preserves compatibility exports (`simulateTick`, `createInitialSimulationState`, and existing helper API names).
+- Ran lightweight validation checks (`node --check` across core modules + Node simulation smoke loop) to confirm syntax and deterministic tick flow still execute.
