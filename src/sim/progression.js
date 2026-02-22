@@ -48,18 +48,25 @@ export function getSpiritEssenceThreshold(level, config = GAME_CONFIG) {
 
 export function getMindAttackSpeedMultiplier({ mindLevel, config = GAME_CONFIG }) {
   const totalMindLevel = Math.max(0, mindLevel);
-  const rawMultiplier = 1 + Math.log1p(totalMindLevel) * config.cultivation.mindSpeedLogFactor;
+  const rawMultiplier =
+    1 +
+    Math.log1p(totalMindLevel) * config.cultivation.mindSpeedLogFactor +
+    totalMindLevel * config.cultivation.mindSpeedPerLevel;
   return Math.min(config.cultivation.maxAttackSpeedMultiplier, rawMultiplier);
 }
 
 export function getHpRegenPerSecond(run, config = GAME_CONFIG) {
-  const { hpRegenBasePerSecond, hpRegenPerBodyLevel } = config.cultivation;
-  return hpRegenBasePerSecond + run.bodyLevel * hpRegenPerBodyLevel;
+  const { hpRegenBasePerSecond, hpRegenPerBodyLevel, hpRegenBodyGrowthRate } = config.cultivation;
+  const levelProgress = Math.max(0, run.bodyLevel);
+  const linearRegen = levelProgress * hpRegenPerBodyLevel;
+  return hpRegenBasePerSecond + linearRegen * Math.pow(1 + hpRegenBodyGrowthRate, levelProgress);
 }
 
 export function getMaxKi(run, config = GAME_CONFIG) {
-  const { kiMaxBase, kiMaxPerSpiritLevel } = config.cultivation;
-  return kiMaxBase + run.spiritLevel * kiMaxPerSpiritLevel;
+  const { kiMaxBase, kiMaxPerSpiritLevel, kiSpiritGrowthRate } = config.cultivation;
+  const levelProgress = Math.max(0, run.spiritLevel);
+  const linearKiGain = levelProgress * kiMaxPerSpiritLevel;
+  return kiMaxBase + linearKiGain * Math.pow(1 + kiSpiritGrowthRate, levelProgress);
 }
 
 export function resolveLevelUps({ run, persistent, statistics, config = GAME_CONFIG, events = [] }) {

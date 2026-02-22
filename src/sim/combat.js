@@ -29,8 +29,11 @@ export function isCombatOver(state) {
 }
 
 export function getMaxHp(playerStats, config = GAME_CONFIG) {
-  const { playerBaseHp, enduranceHpPerLevel } = config.combat;
-  return Math.floor(playerBaseHp + (playerStats.enduranceLevel - 1) * enduranceHpPerLevel);
+  const { playerBaseHp, enduranceHpPerLevel, enduranceHpGrowthRate } = config.combat;
+  const levelProgress = Math.max(0, playerStats.enduranceLevel - 1);
+  const linearHpGain = levelProgress * enduranceHpPerLevel;
+  const scaledHpGain = linearHpGain * Math.pow(1 + enduranceHpGrowthRate, levelProgress);
+  return Math.floor(playerBaseHp + scaledHpGain);
 }
 
 export function getEnemyMaxHp(distance, config = GAME_CONFIG) {
@@ -51,8 +54,11 @@ export function getEnemyAttack(distance, config = GAME_CONFIG) {
 }
 
 export function computePlayerDamage(playerStats, config = GAME_CONFIG) {
-  const { playerBaseAttack, strengthAttackPerLevel, minDamage } = config.combat;
-  const rawDamage = playerBaseAttack + (playerStats.strengthLevel - 1) * strengthAttackPerLevel;
+  const { playerBaseAttack, strengthAttackPerLevel, strengthAttackGrowthRate, minDamage } = config.combat;
+  const levelProgress = Math.max(0, playerStats.strengthLevel - 1);
+  const linearAttackGain = levelProgress * strengthAttackPerLevel;
+  const scaledAttackGain = linearAttackGain * Math.pow(1 + strengthAttackGrowthRate, levelProgress);
+  const rawDamage = playerBaseAttack + scaledAttackGain;
 
   return Math.max(minDamage, Math.floor(rawDamage));
 }

@@ -4,9 +4,11 @@ import {
   createInitialSimulationState,
   getBodyEssenceThreshold,
   getEncounterDistanceForDepth,
+  computePlayerDamage,
   getEnemyAttack,
   getEnemyMaxHp,
   getHpRegenPerSecond,
+  getMaxHp,
   getMaxKi,
   getMindAttackSpeedMultiplier,
   getMindEssenceThreshold,
@@ -424,9 +426,9 @@ function getCharacterBattleStats({ state, config }) {
   const enemyHealth = state.enemy?.maxHp ?? getEnemyMaxHp({ distance: encounterDistance, currentDepth: previewDepth, config }, config);
 
   return {
-    attackPower: Math.max(1, Math.floor(config.combat.playerBaseAttack + (state.run.strengthLevel - 1) * config.combat.strengthAttackPerLevel)),
+    attackPower: computePlayerDamage({ strengthLevel: state.run.strengthLevel }, config),
     attacksPerSecond: (1000 / attackIntervalMs).toFixed(2),
-    maxHealth: Math.floor(config.combat.playerBaseHp + (state.run.enduranceLevel - 1) * config.combat.enduranceHpPerLevel),
+    maxHealth: getMaxHp({ enduranceLevel: state.run.enduranceLevel }, config),
     enemyAttack,
     enemyHealth
   };
