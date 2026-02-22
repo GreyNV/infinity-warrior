@@ -124,8 +124,26 @@ function getSpawnChance({ missStreak, config }) {
 }
 
 function getConsecutiveEncounterCount({ travelDepth, config }) {
-  const stackBonus = Math.floor(travelDepth / Math.max(1, config.world.consecutiveEnemiesDepthStep));
-  return config.world.consecutiveEnemiesBase + stackBonus;
+  const depthStep = Math.max(1, config.world.consecutiveEnemiesDepthStep);
+  const guaranteedBase = Math.max(1, config.world.consecutiveEnemiesBase);
+  const extraRolls = Math.floor(travelDepth / depthStep);
+  let encounterCount = guaranteedBase;
+
+  if (extraRolls <= 0) return encounterCount;
+
+  const multiEnemyChance = getMultiEnemyChance({ travelDepth, config });
+  for (let rollIndex = 0; rollIndex < extraRolls; rollIndex += 1) {
+    if (Math.random() <= multiEnemyChance) encounterCount += 1;
+  }
+
+  return encounterCount;
+}
+
+function getMultiEnemyChance({ travelDepth, config }) {
+  const chanceStep = Math.max(1, config.world.multiEnemyChanceDepthStep);
+  const chanceProgress = Math.floor(travelDepth / chanceStep);
+  const chance = config.world.multiEnemyChanceBase + chanceProgress * config.world.multiEnemyChancePerStep;
+  return Math.max(0, Math.min(config.world.multiEnemyChanceCap, chance));
 }
 
 function spawnEncounterFromReveal({ state, config, events, reason }) {

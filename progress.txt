@@ -239,3 +239,10 @@
 - Added `src/sim/combat.js`, `src/sim/progression.js`, and `src/sim/world.js` to isolate combat math, progression/cultivation formulas, and world movement/spawn logic into single-purpose modules.
 - Added `src/sim/index.js` and updated `src/simulation.js` into a thinner orchestration layer that preserves compatibility exports (`simulateTick`, `createInitialSimulationState`, and existing helper API names).
 - Ran lightweight validation checks (`node --check` across core modules + Node simulation smoke loop) to confirm syntax and deterministic tick flow still execute.
+2026-02-21 (balance pass: attribute/cultivation scaling + essence rewards + depth-based multi-spawn chance)
+- Checked `progress.txt` before starting this task and reviewed root `AGENTS.md` constraints.
+- Updated `src/config.js` balance constants to strengthen per-level scaling visibility for STR/END and Body/Mind/Spirit effects, reduced essence reward curve, and added depth-based multi-enemy chance controls.
+- Updated `src/sim/combat.js` and `src/sim/progression.js` formulas so regular attribute and cultivation level gains apply stronger per-level growth (attack, max HP, HP regen, attack speed, and max Ki all scale each level).
+- Updated `src/sim/world.js` encounter stacking so deeper travel now gives probabilistic extra enemies on spawn (chance rises with depth, capped by config), instead of only deterministic stacking.
+- Updated `src/main.js` character panel battle stat preview to reuse simulation combat formulas for attack/max-HP values.
+- Ran lightweight validation checks (`node --check` suite + targeted Node smoke test for scaling monotonicity, essence reward regression, and deep-depth multi-enemy pending encounters).

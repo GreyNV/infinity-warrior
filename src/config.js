@@ -23,8 +23,10 @@ export const GAME_CONFIG = {
     effectiveRangeHex: 1,
     playerBaseAttack: 6,
     strengthAttackPerLevel: 1.6,
+    strengthAttackGrowthRate: 0.045,
     playerBaseHp: 90,
     enduranceHpPerLevel: 13,
+    enduranceHpGrowthRate: 0.04,
     enemyHpBase: 30,
     enemyHpExp: 1.24,
     enemyHpLogFactor: 0.58,
@@ -49,16 +51,18 @@ export const GAME_CONFIG = {
     ]
   },
   rewards: {
-    essenceBase: 10,
-    essenceExp: 1.20
+    essenceBase: 7,
+    essenceExp: 1.14
   },
   cultivation: {
     maxFlowEssencePerSecond: 18,
     hpRegenBasePerSecond: 0.8,
     hpRegenPerBodyLevel: 0.22,
+    hpRegenBodyGrowthRate: 0.03,
     mindEssenceBase: 28,
     mindEssenceExp: 1.56,
     mindSpeedLogFactor: 0.26,
+    mindSpeedPerLevel: 0.01,
     maxAttackSpeedMultiplier: 3,
     bodyEssenceBase: 24,
     bodyEssenceExp: 1.52,
@@ -68,6 +72,7 @@ export const GAME_CONFIG = {
     kiBaseRegenPerSecond: 0.01,
     kiMaxBase: 1,
     kiMaxPerSpiritLevel: 1,
+    kiSpiritGrowthRate: 0.05,
   },
   persistence: {
     offlineEssencePerSecondBase: 0.15,
@@ -82,6 +87,10 @@ export const GAME_CONFIG = {
     revealSpawnChanceCap: 0.9,
     consecutiveEnemiesDepthStep: 12,
     consecutiveEnemiesBase: 1,
+    multiEnemyChanceBase: 0.08,
+    multiEnemyChanceDepthStep: 10,
+    multiEnemyChancePerStep: 0.05,
+    multiEnemyChanceCap: 0.45,
     biomes: [
       {
         key: 'IronFlats',
