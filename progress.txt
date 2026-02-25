@@ -251,3 +251,9 @@
 - Replaced `refactoring_plan.md` with a phase-specific roadmap focused on modular single-purpose functions, object-parameter APIs, reusable OOP infrastructure (`GameSession` / `SimulationEngine` / `UiController` / `SaveController`), selector layering, migrations, and deterministic tests.
 - Included an explicit AGENTS-based handoff section in the plan so the next agent can quickly align on role, style, stack, constraints, and workflow.
 - Ran lightweight validation (`node --check src/main.js src/simulation.js src/persistence.js`) to confirm no syntax regressions in the current runtime-critical modules.
+2026-02-25 (plan terminology alignment: depth/travel/reveal framing)
+- Checked `progress.txt` before starting and reviewed root `AGENTS.md` character-sheet requirements.
+- Updated `infinity_tower_development_plan.md` to replace floor-centric loop language with depth/travel/reveal/encounter-chain terminology aligned to current `README.md` scope.
+- Added a new top-level “Current Implementation Alignment” section confirming live systems (reveal ramping, biome+rarity modifiers, battle/cultivation modes, persistence/offline flow).
+- Moved outdated floor-only assumptions into an explicit “Archived Design Notes” section and added acceptance criteria using exact state identifiers (`run`, `persistent`, `world`, `resources`, `enemy`, `combatTimers`).
+- Ran lightweight validation checks (`git diff --check` and targeted `rg` scans) to confirm formatting and identifier coverage.
