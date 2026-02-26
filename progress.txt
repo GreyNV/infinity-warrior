@@ -263,3 +263,9 @@
 - Updated `infinity_tower_development_plan.md` with explicit ownership labeling, shared status legend, a Completed Foundations subsection, and status-tagged milestone headings.
 - Updated `refactoring_plan.md` with explicit ownership labeling, shared status legend, a Completed Foundations subsection, and status-tagged milestone headings.
 - Ran lightweight validation checks (`git diff --check` and targeted `rg` scans for ownership/status markers).
+2026-02-26 (refactoring contract update)
+- Checked `progress.txt` before starting and expanded `refactoring_plan.md` with an explicit contract section.
+- Added canonical state-slice table covering required fields for `run`, `persistent`, `world`, `resources`, `unlocks`, `cultivation`, `statistics`, `enemy`, and `combatTimers`.
+- Added emitted event payload contract table for player/enemy hit, victory/defeat, mode switch, and tab switch events with required keys, value types, and semantics.
+- Added invariant rules (resource non-negativity, flow-rate normalization, valid modes, HP bounds, timer monotonicity, unlock validity) and a breaking-change protocol for contract evolution.
+- Renumbered downstream plan sections to keep document structure consistent after inserting the new contract section.
