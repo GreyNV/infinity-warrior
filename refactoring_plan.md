@@ -1,5 +1,15 @@
 # Infinity Warrior — Next Development Phase Plan (Refactor-First)
 
+**Ownership:** Technical architecture and refactor roadmap.
+
+**Status legend:** `Planned` · `In Progress` · `Done` · `Deprecated`
+
+## Completed Foundations
+- Simulation helper extraction exists in `src/sim/` (`combat.js`, `progression.js`, `world.js`, `index.js`).
+- App loop orchestration and pub-sub exist in `src/main.js`.
+- Persistence and offline progression exist in `src/persistence.js`.
+- Formula/config centralization exists in `src/config.js`.
+
 ## 1) Phase Objective (Why this phase exists)
 Build a reusable, scalable architecture that keeps simulation deterministic while making each feature change low-risk.
 
@@ -10,12 +20,6 @@ This phase prioritizes:
 4. **Shared read-model selectors** so UI, renderer, and persistence stop duplicating formulas.
 
 ## 2) Current Infrastructure Snapshot
-The project already has strong foundations:
-- Simulation helper extraction exists in `src/sim/` (`combat.js`, `progression.js`, `world.js`, `index.js`).
-- App loop orchestration and pub-sub exist in `src/main.js`.
-- Persistence and offline progression exist in `src/persistence.js`.
-- Formula/config centralization exists in `src/config.js`.
-
 Primary gaps to close next:
 1. `src/main.js` still mixes orchestration, DOM composition, and tab-level rendering.
 2. State contracts are still implied across simulation/UI/persistence.
@@ -55,7 +59,7 @@ Why: this gives reusable boundaries for future additions (upgrades, milestones, 
 
 ## 5) Execution Plan (Milestone sequence)
 
-### Milestone 1 — State Contract + Selector Layer
+### [Planned] Milestone 1 — State Contract + Selector Layer
 1. Add `src/state/schema.js` for canonical shape + defaults.
 2. Add `src/state/validate.js` for load-time clamping/normalization.
 3. Add `src/selectors/player.js`, `src/selectors/enemy.js`, `src/selectors/progression.js`.
@@ -63,7 +67,7 @@ Why: this gives reusable boundaries for future additions (upgrades, milestones, 
 
 **Done when:** UI and renderer use selectors for derived stats, and load path uses shared schema normalization.
 
-### Milestone 2 — Main Loop OOP Split
+### [Planned] Milestone 2 — Main Loop OOP Split
 1. Create `src/app/game-session.js` (`GameSession` class).
 2. Create `src/app/simulation-engine.js` (`SimulationEngine` class).
 3. Create `src/app/ui-controller.js` for DOM events + tab routing.
@@ -71,7 +75,7 @@ Why: this gives reusable boundaries for future additions (upgrades, milestones, 
 
 **Done when:** `src/main.js` is a thin wiring file and all runtime behavior is preserved.
 
-### Milestone 3 — Persistence Hardening
+### [Planned] Milestone 3 — Persistence Hardening
 1. Introduce `SAVE_VERSION` migration map (`v1 -> v2 ...`).
 2. Move offline progression helpers into focused modules:
    - `src/persistence/offline.js`
@@ -80,7 +84,7 @@ Why: this gives reusable boundaries for future additions (upgrades, milestones, 
 
 **Done when:** older saves migrate automatically and corrupted slices recover safely.
 
-### Milestone 4 — Deterministic Test Harness
+### [Planned] Milestone 4 — Deterministic Test Harness
 1. Add `tests/sim/progression.test.js` for threshold and prestige parity checks.
 2. Add `tests/sim/reset.test.js` for defeat reset invariants.
 3. Add `tests/persistence/offline.test.js` for offline gain parity/limits.

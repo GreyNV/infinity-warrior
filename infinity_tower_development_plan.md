@@ -1,7 +1,11 @@
 # Infinity Tower — Development Plan (MVP First)
 
-## Current Implementation Alignment (Confirmed Live Systems)
-This plan is aligned to the gameplay terminology and systems currently described in `README.md`.
+**Ownership:** Product progression and balance roadmap.
+
+**Status legend:** `Planned` · `In Progress` · `Done` · `Deprecated`
+
+## Completed Foundations
+This plan is aligned to gameplay terminology and systems currently described in `README.md`.
 
 1. **Reveal spawn chance ramping is live** (pity-based reveal/encounter generation with guaranteed spawn after enough misses).
 2. **Biome + rarity enemy modifiers are live** (encounters inherit biome theme and rarity tier to alter stats/identity).
@@ -108,12 +112,23 @@ Use config objects for all pacing constants so balancing is low-friction:
 ---
 
 ## 7) MVP Milestones (Updated Framing)
-1. Lock state schema contract for `run` / `persistent` / `world` / `resources` / `enemy` / `combatTimers`.
-2. Finalize travel+reveal encounter generation and depth pacing.
-3. Finalize biome/rarity modifier tuning and encounter readability.
-4. Finalize battle/cultivation mode transitions and UX clarity.
-5. Finalize persistence + offline return summary and edge-case handling.
-6. Perform targeted balance pass for first 10-minute retention loop.
+### [Planned] Milestone 1 — Lock state schema contract
+Lock state schema contract for `run` / `persistent` / `world` / `resources` / `enemy` / `combatTimers`.
+
+### [Planned] Milestone 2 — Finalize travel + reveal pacing
+Finalize travel+reveal encounter generation and depth pacing.
+
+### [Planned] Milestone 3 — Finalize biome/rarity encounter readability
+Finalize biome/rarity modifier tuning and encounter readability.
+
+### [Planned] Milestone 4 — Finalize activity-mode UX transitions
+Finalize battle/cultivation mode transitions and UX clarity.
+
+### [Planned] Milestone 5 — Finalize persistence + offline return flow
+Finalize persistence + offline return summary and edge-case handling.
+
+### [Planned] Milestone 6 — Targeted MVP balance pass
+Perform targeted balance pass for first 10-minute retention loop.
 
 ---
 

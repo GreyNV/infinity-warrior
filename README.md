@@ -2,6 +2,11 @@
 
 A minimalist browser incremental game prototype built with vanilla JavaScript + Canvas.
 
+## Roadmap Index
+- **Product / MVP scope:** [`infinity_tower_development_plan.md`](./infinity_tower_development_plan.md)
+- **Architecture / refactor:** [`refactoring_plan.md`](./refactoring_plan.md)
+- **Changelog / progress log:** [`progress.txt`](./progress.txt)
+
 ## Current Scope (As Implemented)
 
 The current playable slice is no longer the original floor-only clicker outline. It now centers on **hex-travel encounters**, short combat chains, and persistent growth loops.
@@ -66,7 +71,9 @@ This plan reflects current code reality and focuses on shipping a coherent MVP q
 - Capture a short tuning changelog with before/after constants.
 - Why: MVP success depends on momentum and avoiding progression dead zones.
 
-## Recommended Immediate Backlog (Next 3 Tasks)
-1. ✅ Implemented `saveGame/loadGame/applyOfflineProgress` module with schema versioning.
-2. ✅ Added progress bars + combat badges in UI for run XP/prestige XP/rarity visibility.
-3. Add first 3 Essence upgrades and wire purchase actions to simulation state.
+## Completed Foundations
+1. `saveGame/loadGame/applyOfflineProgress` module with schema versioning is in place.
+2. Progress bars + combat badges for run XP, prestige XP, and rarity visibility are in place.
+
+## Recommended Immediate Backlog
+1. Add first 3 Essence upgrades and wire purchase actions to simulation state.

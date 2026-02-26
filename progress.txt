@@ -257,3 +257,9 @@
 - Added a new top-level “Current Implementation Alignment” section confirming live systems (reveal ramping, biome+rarity modifiers, battle/cultivation modes, persistence/offline flow).
 - Moved outdated floor-only assumptions into an explicit “Archived Design Notes” section and added acceptance criteria using exact state identifiers (`run`, `persistent`, `world`, `resources`, `enemy`, `combatTimers`).
 - Ran lightweight validation checks (`git diff --check` and targeted `rg` scans) to confirm formatting and identifier coverage.
+2026-02-25 (roadmap index + ownership/status normalization)
+- Checked `progress.txt` before starting this update and aligned planning docs as requested.
+- Updated `README.md` with a compact Roadmap Index linking MVP scope, technical refactor roadmap, and progress log; split implemented backlog items into a new Completed Foundations block.
+- Updated `infinity_tower_development_plan.md` with explicit ownership labeling, shared status legend, a Completed Foundations subsection, and status-tagged milestone headings.
+- Updated `refactoring_plan.md` with explicit ownership labeling, shared status legend, a Completed Foundations subsection, and status-tagged milestone headings.
+- Ran lightweight validation checks (`git diff --check` and targeted `rg` scans for ownership/status markers).
